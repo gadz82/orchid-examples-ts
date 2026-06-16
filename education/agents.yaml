@@ -1,0 +1,82 @@
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.3
+  rag:
+    enabled: true
+    k: 5
+
+supervisor:
+  assistant_name: Education Assistant
+  streaming_enabled: true
+
+tools:
+  generate_quiz:
+    handler: "./tools.js#generateQuiz"
+    description: "Generate a quiz from course material."
+    parameters:
+      topic:
+        type: string
+        description: "Topic for the quiz."
+        required: true
+        default: ""
+      difficulty:
+        type: string
+        description: "Difficulty level (beginner, intermediate, advanced)."
+        required: false
+        default: "intermediate"
+
+  create_lesson_plan:
+    handler: "./tools.js#createLessonPlan"
+    description: "Create a lesson plan for a given topic."
+    parameters:
+      topic:
+        type: string
+        description: "Topic for the lesson plan."
+        required: true
+        default: ""
+      duration:
+        type: string
+        description: "Lesson duration (e.g., '45 min', '90 min')."
+        required: false
+        default: "45 min"
+
+  analyze_content:
+    handler: "./tools.js#analyzeContent"
+    description: "Analyze and summarize educational content."
+    parameters:
+      content_id:
+        type: string
+        description: "Content ID to analyze."
+        required: true
+        default: ""
+
+agents:
+  quiz_master:
+    description: "Quiz generation specialist. Creates quiz questions from course material."
+    prompt: |
+      You are a Quiz Master for an educational platform.
+      Generate engaging, pedagogically sound quiz questions.
+      Use generate_quiz to create quizzes with varying difficulty.
+      Include answer explanations to reinforce learning.
+    tools: [generate_quiz]
+
+  curriculum_designer:
+    description: "Curriculum and lesson plan designer."
+    prompt: |
+      You are a Curriculum Designer.
+      Create structured, standards-aligned lesson plans.
+      Use create_lesson_plan to generate plans for various topics and durations.
+      Include learning objectives, activities, and assessments.
+    tools: [create_lesson_plan]
+
+  content_analyst:
+    description: "Educational content analyst and summarizer."
+    prompt: |
+      You are an Educational Content Analyst.
+      Review, analyze, and summarize educational materials.
+      Use analyze_content to process uploaded course content.
+      Identify key concepts, learning gaps, and suggested improvements.
+    tools: [analyze_content]

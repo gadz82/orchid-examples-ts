@@ -1,0 +1,85 @@
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+
+supervisor:
+  assistant_name: Helpdesk Assistant
+  streaming_enabled: true
+
+tools:
+  get_ticket:
+    handler: "./tools.js#getTicket"
+    description: "Get details of a support ticket by ID."
+    parameters:
+      ticket_id:
+        type: string
+        description: "Ticket ID to look up."
+        required: true
+        default: ""
+
+  search_kb:
+    handler: "./tools.js#searchKnowledgeBase"
+    description: "Search the knowledge base for solutions."
+    parameters:
+      query:
+        type: string
+        description: "Search query for the knowledge base."
+        required: true
+        default: ""
+
+  escalate_ticket:
+    handler: "./tools.js#escalateTicket"
+    description: "Escalate a ticket to the appropriate team."
+    parameters:
+      ticket_id:
+        type: string
+        description: "Ticket ID to escalate."
+        required: true
+        default: ""
+      reason:
+        type: string
+        description: "Reason for escalation."
+        required: true
+        default: ""
+
+  check_sla:
+    handler: "./tools.js#checkSLA"
+    description: "Check SLA status for a ticket."
+    parameters:
+      ticket_id:
+        type: string
+        description: "Ticket ID."
+        required: true
+        default: ""
+
+agents:
+  triage:
+    description: "Initial ticket triage — categorizes and prioritizes incoming requests."
+    prompt: |
+      You are a Helpdesk Triage Agent.
+      Categorize incoming support requests by urgency and type.
+      Use get_ticket to look up ticket details and check_sla to verify SLA status.
+      Route to the appropriate support or escalation team.
+    tools: [get_ticket, check_sla]
+
+  support:
+    description: "Technical support specialist — resolves customer issues."
+    prompt: |
+      You are a Technical Support Specialist.
+      Help customers resolve issues using the knowledge base.
+      Use search_kb to find relevant solutions.
+      Provide clear, step-by-step instructions.
+      Be patient and empathetic.
+    tools: [search_kb]
+
+  escalation:
+    description: "Escalation manager — handles critical tickets."
+    prompt: |
+      You are an Escalation Manager.
+      Handle critical and high-priority tickets that require specialized attention.
+      Use escalate_ticket to route to the right team.
+      Coordinate between support teams and provide status updates.
+    tools: [escalate_ticket, get_ticket]

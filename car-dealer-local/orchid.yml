@@ -1,0 +1,36 @@
+# orchid.yml — Car Dealer example (local files)
+#
+# Uses LocalFileContentSource to discover car specification documents
+# from the data/ directory. No Docker, no RAG, no external services.
+#
+# Usage with the CLI:
+#
+#   pip install -e ../orchid -e ../orchid-cli
+#   orchid chat interactive --config orchid.yml
+
+agents:
+  config_path: agents.yaml
+
+llm:
+  model: gemini/gemini-flash-latest
+
+auth:
+  dev_bypass: true
+
+rag:
+  enabled: false
+
+content_sources:
+  - path: data
+    source: local
+    file_extensions: [.md, .txt, .pdf]
+    metadata:
+      category: car-specs
+      dealership: acme-auto
+
+storage:
+  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
+  dsn: ~/.orchid/car-dealer.db
+
+tracing:
+  langsmith_tracing: false

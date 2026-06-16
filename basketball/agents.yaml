@@ -1,0 +1,210 @@
+# agents.yaml — Two-agent basketball demo
+#
+# Mirrors the Python `examples/basketball/agents.yaml` 1:1 in shape:
+# two GenericAgents, six built-in tools, two cross-agent skills,
+# global guardrails, no MCP, no env vars.
+
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+  rag:
+    enabled: false                # No vector store needed for this demo.
+
+# ── Global guardrails ─────────────────────────────────────────
+guardrails:
+  input:
+    - type: prompt_injection
+      fail_action: block
+    - type: content_safety
+      fail_action: block
+    - type: max_length
+      fail_action: block
+      config:
+        max_characters: 5000
+  output:
+    - type: pii
+      fail_action: redact
+      config:
+        entities: [email, phone, ssn]
+
+# ── Built-in tools ────────────────────────────────────────────
+tools:
+  get_player_stats:
+    handler: "./tools/basketball.js#getPlayerStats"
+    description: "Get stats for an NBA player (points, rebounds, assists, team, position)."
+    parameters:
+      player_name:
+        type: string
+        description: "Full or partial NBA player name to look up."
+        required: true
+        default: ""
+
+  compare_players:
+    handler: "./tools/basketball.js#comparePlayers"
+    description: "Side-by-side comparison of two NBA players with advantage analysis."
+    parameters:
+      player_a:
+        type: string
+        description: "Full or partial name of the first player."
+        required: true
+        default: ""
+      player_b:
+        type: string
+        description: "Full or partial name of the second player."
+        required: true
+        default: ""
+
+  get_team_roster:
+    handler: "./tools/basketball.js#getTeamRoster"
+    description: "Get all players on a given NBA team."
+    parameters:
+      team_name:
+        type: string
+        description: "NBA team name (full or partial, e.g. 'Lakers')."
+        required: true
+        default: ""
+
+  assess_motivation:
+    handler: "./tools/psychology.js#assessMotivation"
+    description: "Assess a player's motivation level, drive type, and risk factors."
+    parameters:
+      player_name:
+        type: string
+        description: "Full or partial player name to assess."
+        required: true
+        default: ""
+      situation:
+        type: string
+        description: "Current situation or context (e.g. 'playoff pressure')."
+        required: false
+        default: ""
+
+  suggest_mental_strategy:
+    handler: "./tools/psychology.js#suggestMentalStrategy"
+    description: "Suggest mental performance strategies for a given situation."
+    parameters:
+      situation:
+        type: string
+        description: "Situation to address (slump / pressure / confidence / team conflict)."
+        required: true
+        default: ""
+
+  analyze_team_dynamics:
+    handler: "./tools/psychology.js#analyzeTeamDynamics"
+    description: "Analyze team chemistry, cohesion, and group motivation patterns."
+    parameters:
+      team_name:
+        type: string
+        description: "NBA team name to analyze (full or partial)."
+        required: true
+        default: ""
+
+# ── Orchestrator-level skills (cross-agent) ───────────────────
+skills:
+  player_performance_review:
+    description: >
+      Get a player's stats and performance data, then assess their
+      motivation and mental state with actionable recommendations.
+    steps:
+      - agent: basketball
+        instruction: "Look up the player's current stats and performance data"
+      - agent: psychologist
+        instruction: "Based on the player's stats and situation, assess their motivation and suggest mental strategies"
+
+  team_wellness_check:
+    description: >
+      Review a team's full roster and then analyze group dynamics,
+      cohesion, and motivation across the team.
+    steps:
+      - agent: basketball
+        instruction: "Get the full roster for the specified team with all player stats"
+      - agent: psychologist
+        instruction: "Analyze the team's dynamics, cohesion, and suggest group motivation strategies"
+
+# ── Agents ────────────────────────────────────────────────────
+agents:
+  basketball:
+    description: >
+      NBA basketball expert. Knows player stats, team rosters, and can
+      compare players head-to-head.
+    prompt: |
+      You are a Basketball Expert AI assistant.
+      You have access to player statistics and team rosters via built-in tools.
+
+      Given the user's question and any data from your tools, provide
+      insightful basketball analysis. Be specific with numbers.
+
+      Focus on:
+      - Player performance metrics (PPG, RPG, APG)
+      - Team composition and strengths
+      - Head-to-head player comparisons
+      - Data-driven insights and historical context
+
+      Be concise, engaging, and use the stats to support your analysis.
+    tools:
+      - get_player_stats
+      - compare_players
+      - get_team_roster
+    guardrails:
+      input:
+        - type: topic_restriction
+          fail_action: warn
+          config:
+            allowed_topics:
+              [basketball, nba, player, team, stats, roster, game, season,
+               score, draft, trade, mvp, playoffs, finals, championship]
+    skills:
+      scouting_report:
+        description: "Get a player's stats then compare them with a rival."
+        steps:
+          - tool: get_player_stats
+            source: builtin
+          - tool: compare_players
+            source: builtin
+    execution_hints:
+      parallel_safe: true
+
+  psychologist:
+    description: >
+      Sports psychologist specialised in player motivation, mental
+      toughness and team dynamics.
+    prompt: |
+      You are a Sports Psychologist AI assistant focused on basketball
+      player motivation and team dynamics.
+
+      Provide evidence-based psychological insights given the user's
+      question and any context from other agents or tools.
+
+      Focus on:
+      - Motivation assessment and contributing factors
+      - Mental performance strategies and techniques
+      - Team cohesion and interpersonal dynamics
+      - Actionable, practical recommendations
+
+      Be empathetic, professional, and grounded in sports psychology principles.
+    tools:
+      - assess_motivation
+      - suggest_mental_strategy
+      - analyze_team_dynamics
+    guardrails:
+      input:
+        - type: topic_restriction
+          fail_action: warn
+          config:
+            allowed_topics:
+              [motivation, psychology, mental, mindset, confidence, anxiety,
+               pressure, slump, performance, team dynamics, chemistry, cohesion,
+               focus, resilience, burnout]
+    skills:
+      full_assessment:
+        description: "Assess a player's motivation then suggest tailored mental strategies."
+        steps:
+          - tool: assess_motivation
+            source: builtin
+          - tool: suggest_mental_strategy
+            source: builtin
+    execution_hints:
+      parallel_safe: true

@@ -1,0 +1,59 @@
+# Shared agents.yaml for the embedded examples.
+#
+# A single librarian agent with two built-in tools. Domain-neutral so any
+# integrator can adapt it to their own catalog / records / knowledge base.
+
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+  rag:
+    enabled: false        # No vector store needed for this demo.
+
+# Built-in tools — handlers resolve via the `<modulePath>#<ExportName>`
+# convention (TypeScript port equivalent of Python dotted paths).
+tools:
+  lookup_book:
+    handler: "./tools.js#lookupBook"
+    description: "Look up a book by title or partial match. Returns title, author, year and a one-line summary."
+    parameters:
+      query:
+        type: string
+        description: "Title or partial title of the book to look up."
+        required: true
+        default: ""
+
+  recommend_books:
+    handler: "./tools.js#recommendBooks"
+    description: "Recommend up to three books for a given topic or mood."
+    parameters:
+      topic:
+        type: string
+        description: "Topic, mood or genre to base the recommendation on."
+        required: true
+        default: ""
+      limit:
+        type: integer
+        description: "Maximum number of recommendations (1-5)."
+        required: false
+        default: 3
+
+agents:
+  librarian:
+    description: >
+      Knowledgeable librarian who answers questions about books in the
+      catalog and gives recommendations.
+    prompt: |
+      You are a friendly librarian. Use the `lookup_book` tool to fetch
+      details for any specific title the user mentions, and the
+      `recommend_books` tool when the user asks for suggestions.
+
+      Be concise. Cite the source data the tools return — never fabricate
+      titles or authors.
+    tools:
+      - lookup_book
+      - recommend_books
+    execution_hints:
+      parallel_safe: true

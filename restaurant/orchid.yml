@@ -1,0 +1,15 @@
+# orchid.yml — Restaurant multi-agent demo (TypeScript port)
+# Three agents: menu, orders, reviews with custom tools and RAG.
+
+agents_config_path: ./agents.yaml
+
+default_model: ollama/llama3.2
+
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-restaurant.db
+
+dev_auth_bypass: true
+
+vector_backend: qdrant
+qdrant_url: http://localhost:6333
+embedding_model: text-embedding-3-small

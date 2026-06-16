@@ -1,0 +1,19 @@
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+
+supervisor:
+  assistant_name: Storage Demo Assistant
+  streaming_enabled: true
+
+agents:
+  knowledge_base:
+    description: "General knowledge agent for storage demo."
+    prompt: |
+      You are a Knowledge Base AI assistant.
+      Answer questions clearly and concisely.
+      Provide helpful, accurate information on any topic.
+    tools: []

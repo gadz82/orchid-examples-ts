@@ -1,0 +1,1 @@
+{"name":"@orchid-ai/example-mcp-auth","private":true,"version":"0.0.0","type":"module","description":"MCP authentication example","scripts":{"start":"tsx main.ts","build":"tsc -p tsconfig.json"},"dependencies":{"@orchid-ai/orchid":"file:../../orchid-ts"},"devDependencies":{"tsx":"^4.7.0","typescript":"^5.4.0","@types/node":"^22.0.0"}}

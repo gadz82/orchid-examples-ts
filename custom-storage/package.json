@@ -1,0 +1,18 @@
+{
+    "name": "@orchid-ai/example-custom-storage",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "description": "Custom MySQL chat storage backend skeleton for @orchid-ai/orchid",
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "start": "tsx main.ts"
+    },
+    "dependencies": {
+        "@orchid-ai/orchid": "file:../../orchid-ts"
+    },
+    "devDependencies": {
+        "tsx": "^4.7.0",
+        "typescript": "^5.4.0"
+    }
+}

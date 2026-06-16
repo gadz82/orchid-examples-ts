@@ -1,0 +1,32 @@
+# docker-compose.yml — Md Config TypeScript example
+#
+# Services: qdrant, example
+#
+# Usage:
+#   cp .env.example .env  # fill in your API keys
+#   docker compose up --build
+
+services:
+
+  # ── Qdrant ────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports: ["6333:6333"]
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  # ── Example ──────────────────────────────────────────────
+  example:
+    build:
+      context: .
+    depends_on:
+      qdrant:
+        condition: service_started
+    env_file: .env
+    environment:
+      ORCHID_CONFIG: /app/orchid.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  qdrant_data:

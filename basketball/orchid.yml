@@ -1,0 +1,27 @@
+# orchid.yml — Basketball multi-agent demo (TypeScript port)
+#
+# Self-contained: two GenericAgents using built-in tools only. No MCP
+# servers, no Qdrant, no env vars required.
+#
+# Usage (programmatic):
+#   import {Orchid} from '@orchid-ai/orchid';
+#   const client = await Orchid.fromConfigPath('orchid.yml');
+#
+# Usage (HTTP API):
+#   ORCHID_CONFIG=examples-ts/basketball/orchid.yml node orchid-api-ts/dist/cli.js
+
+agents_config_path: ./agents.yaml
+
+# Default LLM provider — change to openai/anthropic/gemini as needed.
+default_model: ollama/llama3.2
+
+# Built-in SQLite chat storage (default). Switch to "postgres" for the
+# built-in Postgres backend.
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-basketball.db
+
+# RAG disabled — the demo uses in-memory tool data only.
+qdrant_url: ""
+
+# OAuth state store stays in-process (single replica is enough for a demo).
+oauth_state_store_class: memory

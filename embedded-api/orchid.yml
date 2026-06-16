@@ -1,0 +1,8 @@
+agents_config_path: ./agents.yaml
+
+default_model: ollama/llama3.2
+
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-embedded-api.db
+
+qdrant_url: ""

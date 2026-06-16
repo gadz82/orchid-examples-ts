@@ -1,0 +1,87 @@
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+  rag:
+    enabled: true
+    k: 4
+
+supervisor:
+  assistant_name: Restaurant Assistant
+  streaming_enabled: true
+
+tools:
+  get_menu:
+    handler: "./tools.js#getMenu"
+    description: "Get today's menu with prices and dietary info."
+    parameters:
+      category:
+        type: string
+        description: "Menu category (appetizers, mains, desserts, drinks)"
+        required: false
+        default: ""
+
+  check_order_status:
+    handler: "./tools.js#checkOrderStatus"
+    description: "Check the status of a customer order."
+    parameters:
+      order_id:
+        type: string
+        description: "Order ID to look up."
+        required: true
+        default: ""
+
+  lookup_recipe:
+    handler: "./tools.js#lookupRecipe"
+    description: "Look up a recipe for a menu item."
+    parameters:
+      dish_name:
+        type: string
+        description: "Name of the dish."
+        required: true
+        default: ""
+
+  get_reviews:
+    handler: "./tools.js#getReviews"
+    description: "Get recent reviews for a menu item."
+    parameters:
+      dish_name:
+        type: string
+        description: "Name of the dish to get reviews for."
+        required: true
+        default: ""
+
+agents:
+  menu:
+    description: "Restaurant menu expert. Knows all dishes, prices, dietary info, and recipes."
+    prompt: |
+      You are a Menu Expert for a fine dining restaurant.
+      You know every dish on the menu, including ingredients, prices, and dietary restrictions.
+      When asked about a dish, provide detailed descriptions and suggest pairings.
+      Use the tools to look up menu items and recipes.
+      Be enthusiastic about food — make the descriptions mouth-watering.
+    tools:
+      - get_menu
+      - lookup_recipe
+
+  orders:
+    description: "Order management specialist. Tracks and updates customer orders."
+    prompt: |
+      You are an Order Management specialist.
+      You track order status, handle modifications, and resolve issues.
+      Use check_order_status to look up orders.
+      Be efficient and professional when dealing with order inquiries.
+    tools:
+      - check_order_status
+
+  reviews:
+    description: "Restaurant review analyst. Analyzes customer feedback."
+    prompt: |
+      You are a Review Analyst for the restaurant.
+      You analyze customer reviews, identify trends, and provide insights.
+      Use get_reviews to fetch reviews for specific dishes.
+      Summarize sentiment and highlight common praise or complaints.
+    tools:
+      - get_reviews

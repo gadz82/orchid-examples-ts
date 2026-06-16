@@ -1,0 +1,14 @@
+# orchid.yml — Education multi-agent demo (TypeScript port)
+# Agents for quiz generation, lesson plans, and content analysis.
+
+agents_config_path: ./agents.yaml
+default_model: ollama/llama3.2
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-education.db
+dev_auth_bypass: true
+vector_backend: qdrant
+qdrant_url: http://localhost:6333
+embedding_model: text-embedding-3-small
+uploads:
+  namespace: uploads
+  max_size_mb: 20

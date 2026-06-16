@@ -1,0 +1,22 @@
+# docker-compose.yml — Learning TypeScript example
+#
+# Services: example
+#
+# Usage:
+#   cp .env.example .env  # fill in your API keys
+#   docker compose up --build
+
+services:
+
+  # ── Example ──────────────────────────────────────────────
+  example:
+    build:
+      context: .
+    depends_on: []
+    env_file: .env
+    environment:
+      ORCHID_CONFIG: /app/orchid.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:

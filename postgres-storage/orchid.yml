@@ -1,0 +1,8 @@
+# orchid.yml — PostgreSQL storage demo (TypeScript port)
+# Demonstrates @orchid-ai/orchid-storage-postgres plugin usage.
+
+agents_config_path: ./agents.yaml
+default_model: ollama/llama3.2
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-pg-demo.db
+dev_auth_bypass: true

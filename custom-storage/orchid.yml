@@ -1,0 +1,19 @@
+# orchid.yml — Wires the custom MySQL chat storage backend.
+#
+# The framework looks up `chat_storage_class`:
+#   - Built-in shortcuts: "sqlite" (default) | "postgres"
+#   - Custom path:        "<modulePath>#<ExportName>"
+#
+# Both `<modulePath>` styles are supported:
+#   - Relative file:      "./dist/mysqlStorage.js#MySQLChatStorage"
+#   - Bare specifier:     "@myorg/orchid-storage-mysql#MySQLChatStorage"
+
+agents_config_path: ./agents.yaml
+
+default_model: ollama/llama3.2
+
+# Custom MySQL backend — built locally to ./dist/mysqlStorage.js by tsc.
+chat_storage_class: ./dist/mysqlStorage.js#MySQLChatStorage
+chat_db_dsn: mysql://orchid:orchid@localhost:3306/orchid_chats
+
+qdrant_url: ""

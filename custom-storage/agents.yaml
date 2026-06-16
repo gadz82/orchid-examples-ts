@@ -1,0 +1,18 @@
+# Trivial single-agent config — the focus of this example is the storage
+# backend, not the agent topology. Re-uses the librarian agent shape from
+# examples-ts/embedded.
+
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+  rag:
+    enabled: false
+
+agents:
+  assistant:
+    description: General-purpose assistant for testing chat persistence.
+    prompt: |
+      You are a helpful assistant. Answer concisely.

@@ -1,0 +1,14 @@
+version: "1"
+
+defaults:
+  llm:
+    model: ollama/llama3.2
+    temperature: 0.2
+  rag:
+    enabled: false
+
+agents:
+  assistant:
+    description: General-purpose assistant for the custom-router demo.
+    prompt: |
+      You are a helpful assistant. Answer concisely.

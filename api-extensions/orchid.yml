@@ -1,0 +1,12 @@
+agents_config_path: ./agents.yaml
+
+default_model: ollama/llama3.2
+
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-custom-router.db
+
+qdrant_url: ""
+
+# Dev-only — accept any Authorization: Bearer dev-token call so the
+# example is hittable without setting up a real identity resolver.
+dev_auth_bypass: true

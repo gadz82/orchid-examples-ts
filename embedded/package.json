@@ -1,0 +1,22 @@
+{
+    "name": "@orchid-ai/example-embedded",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "description": "Embedded usage examples for @orchid-ai/orchid",
+    "scripts": {
+        "minimal": "tsx 01-minimal.ts",
+        "multi-turn": "tsx 02-multi-turn.ts",
+        "streaming": "tsx 03-streaming.ts",
+        "inline": "tsx 04-inline-config.ts",
+        "custom-runtime": "tsx 05-custom-runtime.ts",
+        "all": "npm run minimal && npm run multi-turn && npm run streaming && npm run inline && npm run custom-runtime"
+    },
+    "dependencies": {
+        "@orchid-ai/orchid": "file:../../orchid-ts"
+    },
+    "devDependencies": {
+        "tsx": "^4.7.0",
+        "typescript": "^5.4.0"
+    }
+}

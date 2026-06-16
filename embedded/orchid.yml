@@ -1,0 +1,18 @@
+# Shared orchid.yml for the embedded examples.
+#
+# Points at the agents.yaml in this folder. SQLite is the default chat
+# storage — a database file is created at the path below on first run.
+
+agents_config_path: ./agents.yaml
+
+# Default LLM provider for everything below.
+default_model: ollama/llama3.2
+
+# Built-in SQLite chat storage. Switch to "postgres" + a Postgres DSN
+# to use the built-in Postgres backend instead.
+chat_storage_class: sqlite
+chat_db_dsn: ./.orchid-embedded.db
+
+# RAG is disabled in this example — flip enabled: true in agents.yaml
+# (under defaults.rag) and configure qdrant_url to enable it.
+qdrant_url: ""

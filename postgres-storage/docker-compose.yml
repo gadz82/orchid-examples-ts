@@ -1,0 +1,41 @@
+# docker-compose.yml — Postgres Storage TypeScript example
+#
+# Services: postgres, example
+#
+# Usage:
+#   cp .env.example .env  # fill in your API keys
+#   docker compose up --build
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: orchid
+      POSTGRES_USER: orchid
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orchid}
+    ports: ["5432:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orchid"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Example ──────────────────────────────────────────────
+  example:
+    build:
+      context: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      ORCHID_CONFIG: /app/orchid.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres_data:
