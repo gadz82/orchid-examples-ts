@@ -11,6 +11,8 @@
 agents_config_path: ./agents.yaml
 
 default_model: ollama/llama3.2
+llm:
+  ollama_api_base: http://host.docker.internal:11434
 
 # Custom MySQL backend — built locally to ./dist/mysqlStorage.js by tsc.
 chat_storage_class: ./dist/mysqlStorage.js#MySQLChatStorage

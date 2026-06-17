@@ -7,6 +7,8 @@ agents_config_path: ./agents.yaml
 
 # Default LLM provider for everything below.
 default_model: ollama/llama3.2
+llm:
+  ollama_api_base: http://host.docker.internal:11434
 
 # Built-in SQLite chat storage. Switch to "postgres" + a Postgres DSN
 # to use the built-in Postgres backend instead.

@@ -21,6 +21,7 @@ agents:
 # ── LLM ───────────────────────────────────────────────────────
 llm:
   model: ollama/llama3.2
+  ollama_api_base: http://host.docker.internal:11434
 
 # ── Auth (demo: dev bypass) ───────────────────────────────────
 auth:

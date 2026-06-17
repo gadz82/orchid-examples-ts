@@ -3,6 +3,7 @@ agents:
 
 llm:
   model: ollama/llama3.2
+  ollama_api_base: http://host.docker.internal:11434
 
 auth:
   dev_bypass: true

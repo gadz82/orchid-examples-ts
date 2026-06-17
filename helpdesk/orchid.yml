@@ -3,6 +3,8 @@
 
 agents_config_path: ./agents.yaml
 default_model: ollama/llama3.2
+llm:
+  ollama_api_base: http://host.docker.internal:11434
 chat_storage_class: sqlite
 chat_db_dsn: ./.orchid-helpdesk.db
 dev_auth_bypass: true
