@@ -1,10 +1,14 @@
 # docker-compose.yml — Embedded TypeScript example
 #
-# Services: qdrant postgres, example
+# Services: qdrant, postgres (infrastructure only)
+# This example runs scripts directly (not an API server).
+# Use docker compose to start infrastructure, then run scripts on the host.
 #
 # Usage:
-#   cp .env.example .env  # fill in your API keys
-#   docker compose up --build
+#   cp .env.example .env
+#   docker compose up -d qdrant postgres
+#   npm install
+#   npx tsx main.ts
 
 services:
 
@@ -30,21 +34,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  # ── Example ──────────────────────────────────────────────
-  example:
-    build:
-      context: .
-    depends_on:
-      qdrant:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-    env_file: .env
-    environment:
-      ORCHID_CONFIG: /app/orchid.yml
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
   qdrant_data:

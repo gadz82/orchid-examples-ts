@@ -1,10 +1,14 @@
 # docker-compose.yml — Travel Agency TypeScript example
 #
-# Services: qdrant, example
+# Services: agents-api, qdrant, frontend, orchid-mcp
 #
 # Usage:
 #   cp .env.example .env  # fill in your API keys
 #   docker compose up --build
+#
+# API:    http://localhost:8080
+# UI:     http://localhost:3000
+# MCP:    http://localhost:9000/mcp
 
 services:
 
@@ -15,18 +19,66 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  # ── Example ──────────────────────────────────────────────
-  example:
+  # ── Agents API ────────────────────────────────────────────
+  agents-api:
     build:
-      context: .
+      context: ../../
+      dockerfile: orchid-api-ts/Dockerfile
+    ports: ["8080:8000"]
     depends_on:
       qdrant:
         condition: service_started
     env_file: .env
     environment:
       ORCHID_CONFIG: /app/orchid.yml
+    volumes:
+      - chat_data:/data
+      - ./orchid.yml:/app/orchid.yml:ro
+      - ./agents.yaml:/app/agents.yaml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+  # ── Frontend ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../_docker
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_DEV_AUTH_BYPASS: "true"
+    ports: ["3000:3000"]
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:-dev-auth-secret-change-in-prod}
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: "true"
+      DEV_AUTH_BYPASS: "true"
+      NEXT_PUBLIC_DEV_AUTH_BYPASS: "true"
+      AGENTS_API_URL: http://agents-api:8000
+      NEXT_PUBLIC_AGENTS_API_URL: http://localhost:8080
+    depends_on:
+      agents-api:
+        condition: service_healthy
+
+  # ── Orchid MCP gateway ────────────────────────────────────
+  orchid-mcp:
+    build:
+      context: ../_docker
+      dockerfile: Dockerfile.mcp
+    ports: ["9000:9000"]
+    depends_on:
+      agents-api:
+        condition: service_healthy
+    environment:
+      ORCHID_MCP_ORCHID_API_URL: http://agents-api:8000
+      ORCHID_MCP_SERVICE_ACCOUNT_TOKEN: ${MCP_TOKEN:-demo-token}
+      ORCHID_MCP_I_UNDERSTAND_THE_RISK: "true"
+      ORCHID_MCP_LOG_LEVEL: info
 
 volumes:
   qdrant_data:
+  chat_data:
