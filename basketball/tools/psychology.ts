@@ -31,30 +31,43 @@ const MOTIVATION_PROFILES: Record<string, { drive: string; risks: string[] }> = 
 
 function findKey(query: string): string | null {
     const q = query.trim().toLowerCase();
+    const qWords = q.split(/\s+/);
     for (const key of Object.keys(MOTIVATION_PROFILES)) {
         if (key.includes(q) || q.includes(key)) return key;
+        // Partial word match: any query word is a prefix of a name word, or vice versa
+        const nameWords = key.split(/\s+/);
+        for (const qw of qWords) {
+            if (qw.length < 3) continue;
+            for (const nw of nameWords) {
+                if (nw.startsWith(qw) || qw.startsWith(nw)) return key;
+            }
+        }
     }
     return null;
 }
 
-export function assessMotivation(args: Record<string, unknown>): string {
-    const player = String(args.player_name ?? '');
+export function assessMotivation(args: Record<string, unknown>): unknown {
+    const player = String(args.player_name ?? args.query ?? '');
     const situation = String(args.situation ?? 'general competition').trim();
 
     const key = findKey(player);
-    if (!key) return `No motivation profile in this demo dataset for ${JSON.stringify(player)}.`;
+    if (!key) {
+        return {
+            error: `No motivation profile in this demo dataset for '${player}'`,
+            available: Object.keys(MOTIVATION_PROFILES),
+        };
+    }
 
     const {drive, risks} = MOTIVATION_PROFILES[key];
-    return [
-        `Motivation profile (${player}, situation: ${situation}):`,
-        `  Drive: ${drive}`,
-        '  Risks:',
-        ...risks.map((r) => `    - ${r}`),
-    ].join('\n');
+    return {
+        player,
+        situation,
+        profile: { drive, risks },
+    };
 }
 
 export function suggestMentalStrategy(args: Record<string, unknown>): string {
-    const situation = String(args.situation ?? '').trim().toLowerCase();
+    const situation = String(args.situation ?? args.query ?? '').trim().toLowerCase();
     if (!situation) return 'No situation provided.';
 
     if (situation.includes('slump')) {
@@ -99,7 +112,7 @@ export function suggestMentalStrategy(args: Record<string, unknown>): string {
 }
 
 export function analyzeTeamDynamics(args: Record<string, unknown>): string {
-    const team = String(args.team_name ?? '').trim().toLowerCase();
+    const team = String(args.team_name ?? args.query ?? '').trim().toLowerCase();
     if (!team) return 'No team name provided.';
 
     const profiles: Record<string, string> = {
