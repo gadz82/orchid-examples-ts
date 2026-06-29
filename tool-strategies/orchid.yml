@@ -26,12 +26,12 @@ auth:
 
 # ── Chat persistence (built-in SQLite) ───────────────────────
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/tool_strategies_chats.db
+  class: sqlite
+  dsn: ./.orchid-tool-strategies.db
 
 # ── Startup hook registers the custom ``priority`` strategy ──
 startup:
-  hook: examples.tool-strategies.hooks.startup.bootstrap_strategies
+  hook: ./hooks/startup.ts#bootstrapStrategies
 
 # ── Observability ────────────────────────────────────────────
 tracing:

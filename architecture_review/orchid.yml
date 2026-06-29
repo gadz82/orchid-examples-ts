@@ -31,8 +31,8 @@ upload:
   chunk_overlap: 200
 
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/chats.db
+  class: sqlite
+  dsn: ./.orchid-architecture_review.db
 
 tracing:
   langsmith_tracing: false

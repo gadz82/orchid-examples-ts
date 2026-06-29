@@ -59,25 +59,78 @@ guardrails:
 # ── Built-in tool declarations ────────────────────────────────
 tools:
   recommend_outfit:
-    class: "examples.weather.tools.clothing.RecommendOutfitTool"
+    handler: "./tools/clothing.ts#recommendOutfit"
     description: >
       Recommend clothing and outfit combinations based on weather conditions
       (temperature, precipitation, wind, UV index) and activity type.
       Returns layered outfit suggestions with reasoning.
+    parameters:
+      temperature_c:
+        type: number
+        description: "Temperature in Celsius."
+        required: false
+        default: 20
+      precipitation_chance:
+        type: number
+        description: "Chance of precipitation as a percentage (0-100)."
+        required: false
+        default: 0
+      wind_speed_kmh:
+        type: number
+        description: "Wind speed in km/h."
+        required: false
+        default: 0
+      uv_index:
+        type: number
+        description: "UV index (0+)."
+        required: false
+        default: 0
+      activity:
+        type: string
+        description: "Planned activity (casual, running, hiking, business, beach, etc.)."
+        required: false
+        default: "casual"
 
   get_safety_tips:
-    class: "examples.weather.tools.safety.GetSafetyTipsTool"
+    handler: "./tools/safety.ts#getSafetyTips"
     description: >
       Get safety recommendations and preparedness tips for specific
       weather hazards (heatwaves, storms, floods, blizzards, hurricanes,
       extreme cold). Returns actionable safety guidance.
+    parameters:
+      hazard:
+        type: string
+        description: "Weather hazard type (heatwave, extreme_cold, storm, flood, blizzard, hurricane)."
+        required: true
+        default: ""
 
   assess_weather_risk:
-    class: "examples.weather.tools.safety.AssessWeatherRiskTool"
+    handler: "./tools/safety.ts#assessWeatherRisk"
     description: >
       Assess the risk level (low/moderate/high/extreme) of current or
       forecasted weather conditions. Considers temperature extremes,
       wind speeds, precipitation intensity, and storm risk.
+    parameters:
+      temperature_c:
+        type: number
+        description: "Temperature in Celsius."
+        required: false
+        default: 20
+      wind_speed_kmh:
+        type: number
+        description: "Wind speed in km/h."
+        required: false
+        default: 0
+      precipitation_mm:
+        type: number
+        description: "Expected precipitation in millimetres over 24h."
+        required: false
+        default: 0
+      weather_code:
+        type: string
+        description: "Weather condition summary or WMO weather code description."
+        required: false
+        default: ""
 
 # ── Orchestrator-level skills (cross-agent) ───────────────────
 skills:
@@ -231,7 +284,7 @@ agents:
 
       Give clear, specific recommendations with reasoning.
 
-    class: examples.weather.agents.outfit.OutfitAdvisorAgent
+    class: ./agents/outfit.ts#OutfitAdvisorAgent
 
     rag:
       namespace: clothing-guides

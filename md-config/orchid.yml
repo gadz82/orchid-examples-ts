@@ -1,43 +1,40 @@
-# orchid.yml — Basketball demo configuration
+# orchid.yml — MD Config demo fallback runtime config (TypeScript port)
 #
-# Fallback YAML for comparison with MD config.
-# This is identical to examples/basketball/orchid.yml.
+# This YAML provides the runtime half of the configuration. Agent definitions
+# live in ./agents.yaml.
 #
 # Usage:
-#   ORCHID_CONFIG=examples/md-orchid.yml uvicorn orchid_api.main:app
+#   ORCHID_CONFIG=orchid.yml node orchid-api-ts/dist/cli.js
+#
+# Or via docker-compose:
+#   docker compose up --build
 
-# ── Agents ────────────────────────────────────────────────────
+version: "1"
+
+# Agent behaviour config
 agents:
-  config_path: examples/md-agents.yaml
+  config_path: ./agents.yaml
 
-# ── LLM ───────────────────────────────────────────────────────
+# Default LLM provider
 llm:
   model: ollama/llama3.2
   ollama_api_base: http://host.docker.internal:11434
 
-# ── Auth ──────────────────────────────────────────────────────
+# Auth
 auth:
   dev_bypass: true
 
-# ── RAG / Vector DB ──────────────────────────────────────────
+# RAG disabled — demo uses in-memory tool data only
 rag:
   vector_backend: qdrant
-  qdrant_url: http://qdrant:6333
+  qdrant_url: ""
   embedding_model: ollama/nomic-embed-text
 
-# ── Document upload ───────────────────────────────────────────
-upload:
-  vision_model: ollama/minicpm-v
-  namespace: uploads
-  max_size_mb: 20
-  chunk_size: 1000
-  chunk_overlap: 200
-
-# ── Chat persistence ─────────────────────────────────────────
+# Chat persistence (SQLite default)
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/chats.db
+  class: sqlite
+  dsn: ./.orchid-md-config.db
 
-# ── Observability ─────────────────────────────────────────────
+# Tracing
 tracing:
   langsmith_tracing: false

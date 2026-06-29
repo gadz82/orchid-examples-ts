@@ -9,7 +9,7 @@
 #   * "sequential"   — tools run in declared order, each receiving the
 #                       previous results as ``previous_results``.
 #   * "llm_decides"  — the LLM picks which tools to call.
-#   * "priority"     — custom strategy registered by ``hooks/startup.py``.
+#   * "priority"     — custom strategy registered by ``hooks/startup.ts``.
 #                       Calls tools in declared order, stops at first
 #                       non-empty result.  Mirrors a "cache → DB →
 #                       upstream" lookup chain.
@@ -40,17 +40,20 @@ defaults:
 # ── Built-in tools (used by the parallel_tools demo) ───────────
 tools:
   metric_a:
-    class: "examples.tool-strategies.tools.metrics.MetricATool"
+    handler: "./tools/metrics.ts#metricA"
     description: "Read-only fast metric A.  Safe for parallel dispatch."
     parallel_safe: true
+    parameters: {}
   metric_b:
-    class: "examples.tool-strategies.tools.metrics.MetricBTool"
+    handler: "./tools/metrics.ts#metricB"
     description: "Read-only fast metric B.  Safe for parallel dispatch."
     parallel_safe: true
+    parameters: {}
   metric_c:
-    class: "examples.tool-strategies.tools.metrics.MetricCTool"
+    handler: "./tools/metrics.ts#metricC"
     description: "Read-only fast metric C.  Safe for parallel dispatch."
     parallel_safe: true
+    parameters: {}
 
 # ── Agents ─────────────────────────────────────────────────────
 agents:
@@ -136,7 +139,7 @@ agents:
       Tries cheap caches first and falls through to slower
       authoritative sources only when earlier tools return empty.
       Backed by the custom ``priority`` strategy registered by
-      ``hooks/startup.py``.
+      ``hooks/startup.ts``.
     prompt: |
       You answer using whichever backend produces the first non-empty
       result, fastest first.
@@ -183,4 +186,4 @@ agents:
 # Wire-up lives in orchid.yml::
 #
 #     startup:
-#       hook: examples.tool-strategies.hooks.startup.bootstrap_strategies
+#       hook: ./hooks/startup.ts#bootstrapStrategies

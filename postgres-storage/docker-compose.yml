@@ -1,7 +1,8 @@
 # docker-compose.yml — Postgres Storage TypeScript example
 #
 # Services: agents-api, qdrant, postgres, frontend, orchid-mcp
-# Demonstrates: orchid-storage-postgres-ts plugin (chat persistence + checkpointer)
+# Demonstrates: @orchid-ai/orchid-storage-postgres plugin (chat persistence,
+# MCP OAuth stores) plus PostgreSQL checkpointer.
 #
 # Usage:
 #   cp .env.example .env  # fill in your API keys
@@ -39,8 +40,7 @@ services:
   # ── Agents API ────────────────────────────────────────────
   agents-api:
     build:
-      context: ../../
-      dockerfile: orchid-api-ts/Dockerfile
+      context: .
     ports: ["8080:8000"]
     depends_on:
       qdrant:
@@ -51,7 +51,12 @@ services:
     environment:
       ORCHID_CONFIG: /app/orchid.yml
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orchid}
-      CHAT_DB_DSN: postgresql://orchid:${POSTGRES_PASSWORD:-orchid}@postgres:5432/orchid
+      CHAT_DB_DSN: "postgresql://orchid:${POSTGRES_PASSWORD:-orchid}@postgres:5432/orchid"
+      MCP_TOKEN_STORE_DSN: "postgresql://orchid:${POSTGRES_PASSWORD:-orchid}@postgres:5432/orchid"
+      MCP_CLIENT_REGISTRATION_STORE_DSN: "postgresql://orchid:${POSTGRES_PASSWORD:-orchid}@postgres:5432/orchid"
+      MCP_GATEWAY_STATE_STORE_CLASS: "@orchid-ai/orchid-storage-postgres#OrchidPostgresMCPGatewayStateStore"
+      MCP_GATEWAY_STATE_STORE_DSN: "postgresql://orchid:${POSTGRES_PASSWORD:-orchid}@postgres:5432/orchid"
+      CHECKPOINTER_DSN: "postgresql://orchid:${POSTGRES_PASSWORD:-orchid}@postgres:5432/orchid"
     volumes:
       - ./orchid.yml:/app/orchid.yml:ro
       - ./agents.yaml:/app/agents.yaml:ro

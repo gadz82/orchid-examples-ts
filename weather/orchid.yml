@@ -2,7 +2,7 @@
 #
 # Showcases:
 #   - Remote MCP server (weather data) with auth.mode: none
-#   - PostgreSQL storage with orchid-storage-postgres
+#   - SQLite chat storage (lightweight TypeScript demo)
 #   - RAG chat summarization with sliding-window compression
 #   - Combo of built-in tools and MCP-delegated tools
 #   - Cross-agent orchestrator skills
@@ -40,14 +40,14 @@ upload:
   chunk_size: 1000
   chunk_overlap: 200
 
-# ── Chat persistence (PostgreSQL) ─────────────────────────────
+# ── Chat persistence (SQLite — lightweight for the demo) ──────
 storage:
-  class: orchid_storage_postgres.OrchidPostgresChatStorage
-  dsn: postgresql://orchid:${POSTGRES_PASSWORD}@postgres:5432/orchid
+  class: sqlite
+  dsn: ./.orchid-weather.db
 
 # ── Startup hook (RAG seed) ───────────────────────────────────
 startup:
-  hook: examples.weather.hooks.startup.bootstrap_weather
+  hook: ./hooks/startup.ts#bootstrapWeather
 
 # ── Observability ─────────────────────────────────────────────
 tracing:

@@ -36,6 +36,17 @@ services:
       timeout: 3s
       retries: 10
 
+  # ── Weather MCP server ──────────────────────────────────────
+  # Remote MCP server that wraps the Open-Meteo free weather API.
+  # Tools: get_forecast, get_current_weather.
+  # No API key required — auth.mode: none.
+  weather-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-weather
+    ports: ["3002:3002"]
+    restart: unless-stopped
+
   # ── Agents API ────────────────────────────────────────────
   agents-api:
     build:
@@ -47,6 +58,8 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
+      weather-mcp:
+        condition: service_started
     env_file: .env
     environment:
       ORCHID_CONFIG: /app/orchid.yml

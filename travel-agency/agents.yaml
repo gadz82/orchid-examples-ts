@@ -53,39 +53,123 @@ guardrails:
 # ── Built-in tool declarations ────────────────────────────────
 tools:
   search_flights:
-    class: "examples.travel-agency.tools.flights.SearchFlightsTool"
+    handler: "./tools/flights.ts#search_flights"
     description: "Search available flights by origin, destination, cabin, price cap."
+    parameters:
+      origin:
+        type: string
+        description: "Origin airport code (e.g. 'JFK', 'LAX')."
+        required: false
+        default: ""
+      destination:
+        type: string
+        description: "Destination airport code (e.g. 'LHR', 'CDG')."
+        required: false
+        default: ""
+      cabin:
+        type: string
+        description: "'economy' or 'business'."
+        required: false
+        default: ""
+      max_price_usd:
+        type: number
+        description: "Optional price cap in USD (0 = no limit)."
+        required: false
+        default: 0
 
   get_flight_details:
-    class: "examples.travel-agency.tools.flights.GetFlightDetailsTool"
+    handler: "./tools/flights.ts#get_flight_details"
     description: "Look up details for a specific flight by flight number."
+    parameters:
+      flight_no:
+        type: string
+        description: "Flight number (e.g. 'AA101')."
+        required: true
 
   search_hotels:
-    class: "examples.travel-agency.tools.hotels.SearchHotelsTool"
+    handler: "./tools/hotels.ts#search_hotels"
     description: "Search hotels by city, rating, price, and amenities."
+    parameters:
+      city:
+        type: string
+        description: "Destination city (e.g. 'London', 'Tokyo')."
+        required: false
+        default: ""
+      min_stars:
+        type: integer
+        description: "Minimum star rating (0 = any)."
+        required: false
+        default: 0
+      max_nightly_usd:
+        type: number
+        description: "Maximum nightly price in USD (0 = no limit)."
+        required: false
+        default: 0
+      required_amenity:
+        type: string
+        description: "Required amenity (e.g. 'wifi', 'gym', 'spa')."
+        required: false
+        default: ""
 
   get_hotel_details:
-    class: "examples.travel-agency.tools.hotels.GetHotelDetailsTool"
+    handler: "./tools/hotels.ts#get_hotel_details"
     description: "Look up details for a specific hotel by ID."
+    parameters:
+      hotel_id:
+        type: string
+        description: "Hotel ID (e.g. 'HTL-LON-001')."
+        required: true
 
   book_flight:
-    class: "examples.travel-agency.tools.bookings.BookFlightTool"
+    handler: "./tools/bookings.ts#book_flight"
     description: "Confirm a flight booking for a passenger. Requires human approval."
-    requires_approval: true   # ← HITL (Enhancement #7)
+    requires_approval: true
+    parameters:
+      flight_no:
+        type: string
+        description: "Flight number from search_flights (e.g. 'AA101')."
+        required: true
+      passenger_name:
+        type: string
+        description: "Full name of the passenger."
+        required: true
 
   book_hotel:
-    class: "examples.travel-agency.tools.bookings.BookHotelTool"
+    handler: "./tools/bookings.ts#book_hotel"
     description: "Confirm a hotel booking for a guest. Requires human approval."
-    requires_approval: true   # ← HITL (Enhancement #7)
+    requires_approval: true
+    parameters:
+      hotel_id:
+        type: string
+        description: "Hotel ID from search_hotels (e.g. 'HTL-LON-001')."
+        required: true
+      guest_name:
+        type: string
+        description: "Full name of the primary guest."
+        required: true
+      check_in:
+        type: string
+        description: "Check-in date (YYYY-MM-DD)."
+        required: true
+      check_out:
+        type: string
+        description: "Check-out date (YYYY-MM-DD)."
+        required: true
 
   cancel_booking:
-    class: "examples.travel-agency.tools.bookings.CancelBookingTool"
+    handler: "./tools/bookings.ts#cancel_booking"
     description: "Cancel an existing booking. Requires human approval."
     requires_approval: true
+    parameters:
+      booking_id:
+        type: string
+        description: "Booking ID to cancel."
+        required: true
 
   list_bookings:
-    class: "examples.travel-agency.tools.bookings.ListBookingsTool"
+    handler: "./tools/bookings.ts#list_bookings"
     description: "List all bookings placed in this session."
+    parameters: {}
 
 # ── Orchestrator-level skills ────────────────────────────────
 skills:
@@ -191,7 +275,7 @@ agents:
 
   # ── Itinerary planner (custom agent class) ──────────────────
   itinerary:
-    class: examples.travel-agency.agents.itinerary.ItineraryAgent
+    class: ./agents/itinerary.ts#ItineraryAgent
     description: >
       Synthesises a day-by-day travel plan from sibling agent results
       (flights + hotels) plus destination RAG context.  Use after

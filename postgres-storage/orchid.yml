@@ -1,10 +1,47 @@
 # orchid.yml — PostgreSQL storage demo (TypeScript port)
-# Demonstrates @orchid-ai/orchid-storage-postgres plugin usage.
+#
+# Demonstrates @orchid-ai/orchid-storage-postgres plugin usage:
+# chat persistence, MCP OAuth stores, and PostgreSQL checkpointer.
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up --build
 
+# ── Agents ────────────────────────────────────────────────────
 agents_config_path: ./agents.yaml
+
+# ── LLM ───────────────────────────────────────────────────────
 default_model: ollama/llama3.2
 llm:
   ollama_api_base: http://host.docker.internal:11434
-chat_storage_class: sqlite
-chat_db_dsn: ./.orchid-pg-demo.db
-dev_auth_bypass: true
+
+# ── Auth ──────────────────────────────────────────────────────
+auth:
+  dev_bypass: true
+
+# ── RAG / Vector DB ───────────────────────────────────────────
+rag:
+  vector_backend: qdrant
+  qdrant_url: http://qdrant:6333
+  embedding_model: ollama/nomic-embed-text
+
+# ── Chat persistence (PostgreSQL via orchid-storage-postgres) ─
+storage:
+  class: "@orchid-ai/orchid-storage-postgres#OrchidPostgresChatStorage"
+  dsn: "postgresql://orchid:${POSTGRES_PASSWORD}@postgres:5432/orchid"
+
+# ── MCP OAuth stores (PostgreSQL) ─────────────────────────────
+mcp_auth:
+  token_store_class: "@orchid-ai/orchid-storage-postgres#OrchidPostgresMCPTokenStore"
+  token_store_dsn: "postgresql://orchid:${POSTGRES_PASSWORD}@postgres:5432/orchid"
+  client_registration_store_class: "@orchid-ai/orchid-storage-postgres#OrchidPostgresMCPClientRegistrationStore"
+  client_registration_store_dsn: "postgresql://orchid:${POSTGRES_PASSWORD}@postgres:5432/orchid"
+
+# ── Checkpointer (PostgreSQL) ─────────────────────────────────
+checkpointer:
+  type: postgres
+  dsn: "postgresql://orchid:${POSTGRES_PASSWORD}@postgres:5432/orchid"
+
+# ── Observability ─────────────────────────────────────────────
+tracing:
+  langsmith_tracing: false
