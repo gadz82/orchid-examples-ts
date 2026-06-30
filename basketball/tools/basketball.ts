@@ -70,8 +70,89 @@ function findPlayer(query: string): PlayerRow | null {
     return null;
 }
 
+interface ScoredPlayer {
+    player: PlayerRow;
+    position: number;
+}
+
+/**
+ * Try to extract one or more player names from a free-form query.
+ * Handles exact matches and common typos via Levenshtein distance.
+ * Returns unique matches in the order they appear in the text.
+ */
+function findPlayersInQuery(query: string): PlayerRow[] {
+    const q = query.toLowerCase();
+    const tokens = q.split(/[^a-z]+/).filter((t) => t.length >= 3);
+    const scored: ScoredPlayer[] = [];
+    const seen = new Set<string>();
+
+    for (const player of Object.values(PLAYERS)) {
+        const key = player.name.toLowerCase();
+        if (seen.has(key)) continue;
+
+        // Exact substring match first.
+        let matched = q.includes(key);
+        let position = q.indexOf(key);
+
+        // Fuzzy match each significant name word against query tokens.
+        if (!matched) {
+            const nameWords = key.split(/\s+/).filter((w) => w.length >= 4);
+            let allWordsMatched = nameWords.length > 0;
+            let firstPosition = Infinity;
+            for (const nw of nameWords) {
+                const threshold = Math.max(1, Math.floor(nw.length / 5));
+                const tokenMatch = tokens.find((t) => levenshtein(t, nw) <= threshold);
+                if (!tokenMatch) {
+                    allWordsMatched = false;
+                    break;
+                }
+                const idx = q.indexOf(tokenMatch);
+                if (idx >= 0 && idx < firstPosition) firstPosition = idx;
+            }
+            if (allWordsMatched && firstPosition !== Infinity) {
+                matched = true;
+                position = firstPosition;
+            }
+        }
+
+        if (matched) {
+            seen.add(key);
+            scored.push({ player, position });
+        }
+    }
+
+    return scored.sort((a, b) => a.position - b.position).map((s) => s.player);
+}
+
+function levenshtein(a: string, b: string): number {
+    const m = a.length;
+    const n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const prev = new Array<number>(n + 1);
+    for (let j = 0; j <= n; j++) prev[j] = j;
+    for (let i = 1; i <= m; i++) {
+        const curr = new Array<number>(n + 1);
+        curr[0] = i;
+        for (let j = 1; j <= n; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+        }
+        for (let j = 0; j <= n; j++) prev[j] = curr[j];
+    }
+    return prev[n];
+}
+
 export function getPlayerStats(args: Record<string, unknown>): unknown {
-    const name = String(args.player_name ?? args.query ?? '');
+    let name = String(args.player_name ?? '');
+    if (!name) {
+        const query = String(args.query ?? '');
+        const players = findPlayersInQuery(query);
+        if (players.length > 0) {
+            return { ...players[0] };
+        }
+        name = query;
+    }
     const player = findPlayer(name);
     if (!player) {
         return {
@@ -83,12 +164,27 @@ export function getPlayerStats(args: Record<string, unknown>): unknown {
 }
 
 export function comparePlayers(args: Record<string, unknown>): unknown {
-    const a = findPlayer(String(args.player_a ?? args.query ?? ''));
-    const b = findPlayer(String(args.player_b ?? ''));
+    let aName = String(args.player_a ?? '');
+    let bName = String(args.player_b ?? '');
+
+    if (!aName || !bName) {
+        const query = String(args.query ?? '');
+        const players = findPlayersInQuery(query);
+        if (players.length >= 2 && !aName && !bName) {
+            aName = players[0].name;
+            bName = players[1].name;
+        } else {
+            if (!aName) aName = players[0]?.name ?? query;
+            if (!bName) bName = players[1]?.name ?? '';
+        }
+    }
+
+    const a = findPlayer(aName);
+    const b = findPlayer(bName);
     if (!a || !b) {
         const missing: string[] = [];
-        if (!a) missing.push(String(args.player_a ?? args.query ?? ''));
-        if (!b) missing.push(String(args.player_b ?? ''));
+        if (!a) missing.push(aName);
+        if (!b) missing.push(bName);
         return { error: `Player(s) not found: ${missing.join(', ')}` };
     }
 
