@@ -1,23 +1,12 @@
-# orchid.yml — Car Dealer Expert Fleet with dynamic agent creation
+# orchid.yml — Car Dealer Expert Fleet (TypeScript port)
 #
-# Demonstrates content-source-driven agent fleet generation:
-#   Content sources → ContentReader → ContentSummariser → SQLite agent_configs
-#   → merge_from_db() → compiled graph with specialised experts.
+# Demonstrates a small fleet of specialised car-brand expert agents.
+# The Python version built these dynamically from content sources; the
+# TypeScript port keeps a static demo fleet for framework parity.
 #
 # Usage:
-#
-#   pip install -e ../orchid -e ../orchid-cli
-#
-#   # First run — the startup hook builds the fleet from scratch
-#   orchid chat interactive --config orchid.yml
-#
-#   # The supervisor now routes to toyota-expert, ford-expert, vw-expert
-#   > What's the fuel economy of the Toyota Camry?
-#   > Compare the F-150 and the Golf.
-#
-#   # To rebuild the fleet (e.g. after adding new documents):
-#   rm ~/.orchid/car-dealer-fleet.db
-#   orchid chat interactive --config orchid.yml
+#   cd workspace-ts/examples-ts/car_dealer_fleet
+#   npm install && npm start
 
 agents:
   config_path: agents.yaml
@@ -31,21 +20,13 @@ auth:
 rag:
   enabled: false
 
-# Content sources — car specification documents
-content_sources:
-  - path: data
-    source: local
-    file_extensions: [.md, .txt]
-    metadata:
-      category: car-specs
-
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: ~/.orchid/car-dealer-fleet.db
+  class: sqlite
+  dsn: ./.orchid-car-dealer-fleet.db
 
-# Startup hook — builds the expert fleet from content sources
+# Startup hook — best-effort RAG seed for the demo fleet.
 startup:
-  hook: examples.car_dealer_fleet.hooks.startup.build_expert_fleet
+  hook: ./hooks/startup.ts#seedCarDealerFleet
 
 tracing:
   langsmith_tracing: false

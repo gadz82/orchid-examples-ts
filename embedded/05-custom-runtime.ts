@@ -18,13 +18,13 @@
 import {fileURLToPath} from 'node:url';
 import {dirname, join} from 'node:path';
 
-import {Orchid, loadConfig} from '@orchid-ai/orchid';
+import {Orchid, loadOrchidConfig} from '@orchid-ai/orchid';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CONFIG = join(HERE, 'agents.yaml');
 
 async function main(): Promise<void> {
-    const config = await loadConfig(CONFIG);
+    const config = await loadOrchidConfig(CONFIG);
 
     // Build a chat model however you like — the example uses the framework
     // factory, but any LangChain BaseChatModel works (pass it directly).
@@ -45,11 +45,11 @@ async function main(): Promise<void> {
 
     try {
         const result = await client.invoke({
-            message: 'Recommend a curiosity-driven non-fiction book.',
+            messages: [{role: 'user', content: 'Recommend a curiosity-driven non-fiction book.'}],
             userId: 'erin',
             tenantId: 'acme',
             persist: false,
-        });
+        } as any);
         console.log(result.response);
     } finally {
         await client.close();

@@ -18,6 +18,6 @@ RUN npm install typescript tsx \
 COPY . .
 
 ENV NODE_ENV=production
-ENV ORCHID_CONFIG=/app/orchid.yml
+ENV ORCHID_CONFIG=/app/orchid.md
 
 CMD ["npx", "tsx", "main.ts"]

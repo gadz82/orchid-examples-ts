@@ -3,8 +3,9 @@
  *
  * Wire this into orchid.yml via:
  *
- *   chat_storage_class: ./dist/mysqlStorage.js#MySQLChatStorage
- *   chat_db_dsn: mysql://user:pass@host:3306/orchid_chats
+ *   storage:
+ *     class: ./dist/mysqlStorage.js#MySQLChatStorage
+ *     dsn: mysql://user:pass@host:3306/orchid_chats
  *
  * The framework constructs the class with `{dsn, extraMigrations?}` and
  * calls `initDb()` exactly once on startup (which should run the migrations
@@ -18,12 +19,8 @@
 
 import {randomUUID} from 'node:crypto';
 
-import type {
-    AddMessageOptions,
-    GetMessagesOptions,
-    OrchidChatStorage,
-} from '@orchid-ai/orchid';
-import type {OrchidChatMessage, OrchidChatSession} from '@orchid-ai/orchid';
+import {OrchidChatStorage} from '@orchid-ai/orchid/persistence';
+import type {ChatSession, Message} from '@orchid-ai/orchid/persistence';
 
 // Replace this with: import {createPool, type Pool} from 'mysql2/promise';
 // (kept abstract here to avoid forcing the example to install mysql2)
@@ -35,8 +32,8 @@ type Pool = {
 interface MigrationModule {
     readonly VERSION: string;
     readonly DESCRIPTION: string;
-    up(conn: Pool, opts: { dialect: string }): Promise<void>;
-    down(conn: Pool, opts: { dialect: string }): Promise<void>;
+    up(conn: Pool, opts: {dialect: string}): Promise<void>;
+    down(conn: Pool, opts: {dialect: string}): Promise<void>;
 }
 
 interface MySQLOpts {
@@ -44,12 +41,13 @@ interface MySQLOpts {
     readonly extraMigrations?: MigrationModule[];
 }
 
-export class MySQLChatStorage implements OrchidChatStorage {
+export class MySQLChatStorage extends OrchidChatStorage {
     private pool: Pool | null = null;
     private readonly dsn: string;
     private readonly extraMigrations: MigrationModule[];
 
     constructor(opts: MySQLOpts) {
+        super();
         this.dsn = opts.dsn;
         this.extraMigrations = opts.extraMigrations ?? [];
     }
@@ -59,7 +57,7 @@ export class MySQLChatStorage implements OrchidChatStorage {
         // this.pool = createPool(this.dsn);
         // For the skeleton we shim it:
         this.pool = {
-            async query() { return [[], null]; },
+            async query<T>() { return [[] as T, null]; },
             async end() { /* no-op */ },
         };
 
@@ -74,7 +72,7 @@ export class MySQLChatStorage implements OrchidChatStorage {
 
     // ── Sessions ──────────────────────────────────────────────
 
-    async createChat(tenantId: string, userId: string, title = 'New chat'): Promise<OrchidChatSession> {
+    async createChat(tenantId: string, userId: string, title = 'New chat'): Promise<ChatSession> {
         const id = randomUUID();
         const now = new Date();
         await this.requirePool().query(
@@ -85,7 +83,7 @@ export class MySQLChatStorage implements OrchidChatStorage {
         return {id, tenantId, userId, title, createdAt: now, updatedAt: now, isShared: false};
     }
 
-    async listChats(tenantId: string, userId: string): Promise<OrchidChatSession[]> {
+    async listChats(tenantId: string, userId: string): Promise<ChatSession[]> {
         const [rows] = await this.requirePool().query<RowChatSession[]>(
             `SELECT id, tenant_id, user_id, title, created_at, updated_at, is_shared
              FROM chat_sessions WHERE tenant_id = ? AND user_id = ?
@@ -95,7 +93,7 @@ export class MySQLChatStorage implements OrchidChatStorage {
         return rows.map(rowToSession);
     }
 
-    async getChat(chatId: string): Promise<OrchidChatSession | null> {
+    async getChat(chatId: string): Promise<ChatSession | null> {
         const [rows] = await this.requirePool().query<RowChatSession[]>(
             `SELECT id, tenant_id, user_id, title, created_at, updated_at, is_shared
              FROM chat_sessions WHERE id = ?`,
@@ -127,14 +125,13 @@ export class MySQLChatStorage implements OrchidChatStorage {
 
     async addMessage(
         chatId: string,
-        role: 'user' | 'assistant' | 'system',
+        role: string,
         content: string,
-        opts: AddMessageOptions = {},
-    ): Promise<OrchidChatMessage> {
+        agentsUsed: string[] = [],
+        metadata: Record<string, unknown> = {},
+    ): Promise<Message> {
         const id = randomUUID();
         const now = new Date();
-        const agentsUsed = opts.agentsUsed ?? [];
-        const metadata = opts.metadata ?? {};
         await this.requirePool().query(
             `INSERT INTO chat_messages (id, chat_id, role, content, agents_used, created_at, metadata)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -147,9 +144,7 @@ export class MySQLChatStorage implements OrchidChatStorage {
         return {id, chatId, role, content, agentsUsed, createdAt: now, metadata};
     }
 
-    async getMessages(chatId: string, opts: GetMessagesOptions = {}): Promise<OrchidChatMessage[]> {
-        const limit = opts.limit ?? 100;
-        const offset = opts.offset ?? 0;
+    async getMessages(chatId: string, limit = 100, offset = 0): Promise<Message[]> {
         const [rows] = await this.requirePool().query<RowChatMessage[]>(
             `SELECT id, chat_id, role, content, agents_used, created_at, metadata
              FROM chat_messages WHERE chat_id = ?
@@ -195,14 +190,14 @@ interface RowChatSession {
 interface RowChatMessage {
     id: string;
     chat_id: string;
-    role: 'user' | 'assistant' | 'system';
+    role: string;
     content: string;
     agents_used: string;
     created_at: Date;
     metadata: string;
 }
 
-function rowToSession(row: RowChatSession): OrchidChatSession {
+function rowToSession(row: RowChatSession): ChatSession {
     return {
         id: row.id,
         tenantId: row.tenant_id,
@@ -214,7 +209,7 @@ function rowToSession(row: RowChatSession): OrchidChatSession {
     };
 }
 
-function rowToMessage(row: RowChatMessage): OrchidChatMessage {
+function rowToMessage(row: RowChatMessage): Message {
     return {
         id: row.id,
         chatId: row.chat_id,

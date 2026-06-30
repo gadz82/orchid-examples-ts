@@ -61,8 +61,8 @@ async function main(): Promise<void> {
     });
 
     // ── Listen ──────────────────────────────────────────────
-    const port = Number(process.env.PORT ?? settings.port);
-    const host = process.env.HOST ?? settings.host;
+    const port = Number(process.env.PORT ?? 8000);
+    const host = process.env.HOST ?? '0.0.0.0';
     await app.listen({port, host});
     app.log.info(`orchid-api + custom routes listening on http://${host}:${port}`);
 }

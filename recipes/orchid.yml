@@ -1,51 +1,32 @@
-# orchid.yml — Recipes example (zero-infrastructure RAG with ChromaDB)
+# orchid.yml — Recipes example (TypeScript port)
 #
-# Uses ChromaDB for local, on-disk vector storage — no Docker, no Qdrant
-# required.  The startup hook seeds a small recipe corpus into the
-# ``recipes`` namespace.
-#
-# Usage with the CLI::
-#
-#   pip install -e ../orchid -e ../orchid-cli
-#   orchid chat send "What can I make with chicken and rice?" \
-#     --config orchid.yml
-#
-# Or start an interactive session::
-#
-#   orchid chat interactive --config orchid.yml
+# The startup hook seeds a small recipe corpus into the `recipes` namespace.
 
-# ── Agent config ──────────────────────────────────────────────
 agents:
   config_path: agents.yaml
 
-# ── LLM ───────────────────────────────────────────────────────
 llm:
   model: ollama/llama3.2
   ollama_api_base: http://host.docker.internal:11434
 
-# ── Auth (demo: dev bypass) ───────────────────────────────────
 auth:
   dev_bypass: true
 
-# ── RAG / Vector DB — ChromaDB (zero infra) ───────────────────
 rag:
-  vector_backend: chroma      # on-disk, no Docker needed
-  embedding_model: ollama/nomic-embed-text   # 768-d, runs locally
+  vector_backend: qdrant
+  qdrant_url: http://qdrant:6333
+  embedding_model: ollama/nomic-embed-text
 
-# ── Document upload ───────────────────────────────────────────
 upload:
   namespace: uploads
   max_size_mb: 20
 
-# ── Chat persistence ──────────────────────────────────────────
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: ~/.orchid/recipes.db
+  class: sqlite
+  dsn: ./.orchid-recipes.db
 
-# ── Startup hook seeds the recipe corpus ──────────────────────
 startup:
-  hook: examples.recipes.hooks.startup.seed_recipes
+  hook: ./hooks/startup.ts#seedRecipes
 
-# ── Observability ─────────────────────────────────────────────
 tracing:
   langsmith_tracing: false

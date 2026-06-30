@@ -22,10 +22,10 @@ async function main(): Promise<void> {
     const client = await Orchid.fromConfigPath(CONFIG);
     try {
         const result = await client.invoke({
-            message: 'Just verifying the storage wiring — say hi.',
+            messages: [{role: 'user', content: 'Just verifying the storage wiring — say hi.'}],
             userId: 'tester',
             tenantId: 'demo',
-        });
+        } as any);
         console.log(result.response);
     } finally {
         await client.close();

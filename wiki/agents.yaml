@@ -36,11 +36,16 @@ defaults:
 # ── Built-in tools (ADR-017) ─────────────────────────────────
 tools:
   lookup_glossary:
-    class: examples.wiki.hooks.tools.LookupGlossaryTool
+    handler: ./tools/lookupGlossary.ts#lookupGlossary
     description: >
       Fetch a term's definition from the glossary store.  Results are
       cached into RAG so future ``hybrid`` lookups can pull definitions
       alongside doc-page hits.
+    parameters:
+      term:
+        type: string
+        description: The glossary term to look up.
+        required: true
     inject_to_rag: true
     rag_ttl: 3600
     # ── ADR-024 per-tool RAG override ────────────────────────

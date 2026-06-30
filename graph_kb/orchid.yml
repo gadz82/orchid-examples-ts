@@ -46,12 +46,12 @@ upload:
 
 # ── Chat persistence ─────────────────────────────────────────
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/graph_kb_chats.db
+  class: sqlite
+  dsn: ./.orchid-graph_kb.db
 
 # ── Startup hook seeds the in-memory graph + vector chunks ───
 startup:
-  hook: examples.graph_kb.hooks.startup.bootstrap_graph_kb
+  hook: ./hooks/startup.ts#bootstrapGraphKb
 
 # ── Observability ────────────────────────────────────────────
 tracing:

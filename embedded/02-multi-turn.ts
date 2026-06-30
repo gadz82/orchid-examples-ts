@@ -25,27 +25,27 @@ async function main(): Promise<void> {
 
     try {
         const turn1 = await client.invoke({
-            message: 'Do you have anything by Martin Kleppmann?',
+            messages: [{role: 'user', content: 'Do you have anything by Martin Kleppmann?'}],
             chatId,
             userId: 'bob',
             tenantId: 'acme',
-        });
+        } as any);
         console.log(`Turn 1: ${turn1.response}\n`);
 
         const turn2 = await client.invoke({
-            message: 'What year was that published?',
+            messages: [{role: 'user', content: 'What year was that published?'}],
             chatId,                       // same chat — history auto-loaded
             userId: 'bob',
             tenantId: 'acme',
-        });
+        } as any);
         console.log(`Turn 2: ${turn2.response}\n`);
 
         const turn3 = await client.invoke({
-            message: 'Recommend something similar.',
+            messages: [{role: 'user', content: 'Recommend something similar.'}],
             chatId,
             userId: 'bob',
             tenantId: 'acme',
-        });
+        } as any);
         console.log(`Turn 3: ${turn3.response}\n`);
     } finally {
         await client.close();

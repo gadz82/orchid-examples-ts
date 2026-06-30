@@ -25,17 +25,18 @@ async function main(): Promise<void> {
     try {
         process.stdout.write('Assistant: ');
 
-        for await (const event of client.stream({
-            message: 'Recommend two science books for a weekend read.',
+        const stream = await client.stream({
+            messages: [{role: 'user', content: 'Recommend two science books for a weekend read.'}],
             userId: 'carol',
             tenantId: 'acme',
-        })) {
-            if (event.type === 'token') {
-                process.stdout.write(String(event.data));
-            } else if (event.type === 'done') {
+        } as any);
+        for await (const [type, data] of stream) {
+            if (type === 'token') {
+                process.stdout.write(String(data));
+            } else if (type === 'done') {
                 process.stdout.write('\n');
-                const data = event.data as { agentsUsed?: string[] };
-                console.log(`(agents used: ${JSON.stringify(data.agentsUsed ?? [])})`);
+                const doneData = data as { agentsUsed?: string[] };
+                console.log(`(agents used: ${JSON.stringify(doneData.agentsUsed ?? [])})`);
             }
         }
     } finally {

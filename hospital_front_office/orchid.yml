@@ -17,9 +17,10 @@ llm:
   ollama_api_base: http://host.docker.internal:11434
 
 # ── Auth ──────────────────────────────────────────────────────
+# NOTE: the Python-only identity resolver was removed for the TypeScript
+# port. This programmatic demo uses dev-bypass auth.
 auth:
-  dev_bypass: false
-  identity_resolver_class: examples.hospital_front_office.identity.HospitalIdentityResolver
+  dev_bypass: true
 
 # ── RAG / Vector DB ──────────────────────────────────────────
 rag:
@@ -37,12 +38,12 @@ upload:
 
 # ── Chat persistence ─────────────────────────────────────────
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/hospital_chats.db
+  class: sqlite
+  dsn: ./.orchid-hospital_front_office.db
 
 # ── Startup hook seeds knowledge into RAG ────────────────────
 startup:
-  hook: examples.hospital_front_office.hooks.startup.seed_hospital_knowledge
+  hook: ./hooks/startup.ts#seedHospitalKnowledge
 
 # ── Observability ─────────────────────────────────────────────
 tracing:

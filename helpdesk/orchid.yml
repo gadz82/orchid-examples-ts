@@ -1,13 +1,35 @@
 # orchid.yml — Helpdesk multi-agent demo (TypeScript port)
 # Three agents: triage, support, escalation with SQLite storage.
 
-agents_config_path: ./agents.yaml
-default_model: ollama/llama3.2
+agents:
+  config_path: ./agents.yaml
+
 llm:
-  ollama_api_base: http://host.docker.internal:11434
-chat_storage_class: sqlite
-chat_db_dsn: ./.orchid-helpdesk.db
-dev_auth_bypass: true
-vector_backend: qdrant
-qdrant_url: http://localhost:6333
-embedding_model: text-embedding-3-small
+  model: gemini/gemini-flash-latest
+  gemini_api_key: ${GEMINI_API_KEY}
+
+auth:
+  dev_bypass: true
+
+rag:
+  vector_backend: qdrant
+  qdrant_url: http://qdrant:6333
+  embedding_model: gemini/gemini-embedding-001
+  gemini_api_key: ${GEMINI_API_KEY}
+
+upload:
+  vision_model: ollama/minicpm-v
+  namespace: uploads
+  max_size_mb: 20
+  chunk_size: 1000
+  chunk_overlap: 200
+
+storage:
+  class: sqlite
+  dsn: ./.orchid-helpdesk.db
+
+startup:
+  hook: ./hooks/startup.ts#bootstrapHelpdesk
+
+tracing:
+  langsmith_tracing: false

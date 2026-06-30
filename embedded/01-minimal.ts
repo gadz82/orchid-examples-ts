@@ -18,10 +18,10 @@ async function main(): Promise<void> {
     const client = await Orchid.fromConfigPath(CONFIG);
     try {
         const result = await client.invoke({
-            message: 'Tell me about The Pragmatic Programmer.',
+            messages: [{role: 'user', content: 'Tell me about The Pragmatic Programmer.'}],
             userId: 'alice',
             tenantId: 'acme',
-        });
+        } as any);
 
         console.log('─── Response ' + '─'.repeat(48));
         console.log(result.response);

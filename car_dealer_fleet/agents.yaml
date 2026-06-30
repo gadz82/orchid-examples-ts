@@ -1,26 +1,9 @@
-# agents.yaml — Car Dealer Expert Fleet
+# agents.yaml — Car Dealer Expert Fleet (TypeScript port)
 #
-# This file does NOT define agents.  All agents are created dynamically
-# by the startup hook (hooks/startup.py) which:
-#
-#   1. Reads car specification documents from configured content sources
-#      using a Python-coded ContentReader (not a YAML agent).
-#   2. Analyses document content using a Python-coded ContentSummariser
-#      (not a YAML agent) to identify specialisation topics.
-#   3. Generates OrchidAgentConfig entries and persists them in SQLite
-#      via the agent_configs table.
-#
-# The config_storage block tells Orchid to merge SQLite-stored agent
-# configs into the graph at bootstrap time.  Since merge_from_db() runs
-# AFTER the startup hook, the fleet is ready on first boot.
-#
-# After bootstrap the graph contains:
-#   toyota-expert   — specialist in Toyota Camry specs
-#   ford-expert     — specialist in Ford F-150 specs
-#   vw-expert       — specialist in Volkswagen Golf specs
-#
-# Usage:
-#   orchid chat interactive --config examples/car_dealer_fleet/orchid.yml
+# The Python version created these agents dynamically from car-spec
+# documents stored in SQLite config storage. That mechanism is not
+# available in the TypeScript port, so the fleet is declared statically
+# here as a pragmatic stub.
 
 version: "1"
 
@@ -31,9 +14,77 @@ defaults:
   rag:
     enabled: false
 
-config_storage:
-  enabled: true
-  class: orchid_ai.persistence.config_sqlite.OrchidSQLiteConfigStorage
-  dsn: ~/.orchid/car-dealer-fleet.db
+# ── Built-in tools ──────────────────────────────────────────
+tools:
+  get_model_specs:
+    handler: "./tools/dealer.ts#getModelSpecs"
+    description: "Get specifications for a car model (mpg, engine, trim, year)."
+    parameters:
+      model:
+        type: string
+        description: "Car model name, e.g. 'Camry' or 'F-150'."
+        required: true
+        default: ""
 
-agents: {}
+  compare_models:
+    handler: "./tools/dealer.ts#compareModels"
+    description: "Compare two car models side-by-side."
+    parameters:
+      model_a:
+        type: string
+        description: "First car model name."
+        required: true
+        default: ""
+      model_b:
+        type: string
+        description: "Second car model name."
+        required: true
+        default: ""
+
+# ── Orchestrator-level skills (cross-agent) ───────────────────
+skills:
+  compare_brands:
+    description: "Compare two car brands using their specialist agents."
+    steps:
+      - agent: toyota-expert
+        instruction: "Summarise the strengths of your brand's lineup."
+      - agent: ford-expert
+        instruction: "Summarise the strengths of your brand's lineup."
+
+# ── Agents ────────────────────────────────────────────────────
+agents:
+  toyota-expert:
+    description: >
+      Specialist in Toyota vehicles. Use for questions about Camry,
+      Corolla, RAV4, and other Toyota models.
+    prompt: >
+      You are a Toyota brand expert. You know Toyota model specs,
+      trims, fuel economy, reliability, and typical pricing.
+      Answer concisely and mention specific model details when available.
+    tools:
+      - get_model_specs
+      - compare_models
+
+  ford-expert:
+    description: >
+      Specialist in Ford vehicles. Use for questions about F-150,
+      Mustang, Bronco, and other Ford models.
+    prompt: >
+      You are a Ford brand expert. You know Ford truck and car specs,
+      towing capacity, engine options, and trims.
+      Answer concisely and mention specific model details when available.
+    tools:
+      - get_model_specs
+      - compare_models
+
+  vw-expert:
+    description: >
+      Specialist in Volkswagen vehicles. Use for questions about Golf,
+      Passat, Tiguan, and other VW models.
+    prompt: >
+      You are a Volkswagen brand expert. You know VW model specs,
+      engine options, trims, and fuel economy.
+      Answer concisely and mention specific model details when available.
+    tools:
+      - get_model_specs
+      - compare_models

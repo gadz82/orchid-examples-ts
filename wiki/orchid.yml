@@ -46,12 +46,12 @@ upload:
 
 # ── Chat persistence ─────────────────────────────────────────
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/wiki_chats.db
+  class: sqlite
+  dsn: ./.orchid-wiki.db
 
 # ── Startup hook seeds the docs + FAQ corpora ────────────────
 startup:
-  hook: examples.wiki.hooks.startup.bootstrap_wiki
+  hook: ./hooks/startup.ts#bootstrapWiki
 
 # ── Observability ────────────────────────────────────────────
 tracing:

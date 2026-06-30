@@ -36,11 +36,11 @@ async function main(): Promise<void> {
         for (const message of QUERIES) {
             console.log(`\n>>> ${message}`);
             const result = await client.invoke({
-                message,
+                messages: [{role: 'user', content: message}],
                 chatId,
                 userId: 'coach',
                 tenantId: 'demo',
-            });
+            } as any);
             chatId = result.chatId;
             console.log(`(${result.agentsUsed.join(' + ') || 'direct'})`);
             console.log(result.response);

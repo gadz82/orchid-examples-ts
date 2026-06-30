@@ -1,87 +1,347 @@
+# agents.yaml — Restaurant example configuration (TypeScript port)
+#
+# Three agents demonstrating RAG, dynamic injection, sequential routing,
+# built-in tools, custom agent classes, and multi-agent skills.
+#
+# Activate by pointing the config loader to this file:
+#
+#   AGENTS_CONFIG_PATH=./agents.yaml
+#
+# Agents:
+#   - menu     — GenericAgent (YAML-only): menu queries, dietary filtering, recommendations
+#   - orders   — GenericAgent: order placement, modifications, status checks
+#   - reviews  — Custom ReviewsAgent: review analysis and sentiment
+
 version: "1"
 
 defaults:
   llm:
-    model: ollama/llama3.2
-    temperature: 0.2
+    model: "gemini/gemini-flash-latest"
+    temperature: 0.3
   rag:
-    enabled: true
-    k: 4
+    enabled: false
+    retrieval:
+      strategy: multi_query
+      query_transformers: [reformulate]
 
+# ── Supervisor ────────────────────────────────────────────────
 supervisor:
-  assistant_name: Restaurant Assistant
-  streaming_enabled: true
+  assistant_name: "Restaurant AI"
+  routing_system_prompt: |
+    You are Restaurant AI, an intelligent dining assistant.
+    You coordinate between menu experts, order management, and review analysis
+    to provide a seamless dining experience.
 
+    Route questions about the menu, ingredients, dietary needs, or recommendations
+    to the menu agent. Route order placement, modifications, and status checks
+    to the orders agent. Route review analysis, feedback, and satisfaction
+    questions to the reviews agent.
+
+# ── Global guardrails ────────────────────────────────────────
+guardrails:
+  input:
+    - type: prompt_injection
+      fail_action: block
+    - type: content_safety
+      fail_action: block
+    - type: max_length
+      fail_action: block
+      config:
+        max_characters: 5000
+  output:
+    - type: pii
+      fail_action: redact
+      config:
+        entities: [email, phone, credit_card]
+
+# ── Built-in tools ────────────────────────────────────────────
 tools:
-  get_menu:
-    handler: "./tools.js#getMenu"
-    description: "Get today's menu with prices and dietary info."
+  search_menu:
+    handler: "./tools/menu.ts#searchMenu"
+    description: "Search the restaurant menu by keyword and dietary preference (vegetarian, vegan, gluten-free, etc.)"
     parameters:
-      category:
+      query:
         type: string
-        description: "Menu category (appetizers, mains, desserts, drinks)"
+        description: "Search term (matches name, category, ingredients, description)"
+        required: false
+        default: ""
+      dietary_filter:
+        type: string
+        description: "Dietary preference filter: vegetarian, vegan, gluten-free, dairy-free, or high-protein"
         required: false
         default: ""
 
-  check_order_status:
-    handler: "./tools.js#checkOrderStatus"
-    description: "Check the status of a customer order."
+  get_daily_specials:
+    handler: "./tools/menu.ts#getDailySpecials"
+    description: "Get today's daily specials with prices and availability"
+    parameters: {}
+
+  place_order:
+    handler: "./tools/orders.ts#placeOrder"
+    description: "Place a new order with comma-separated item names and optional table number"
+    parameters:
+      items:
+        type: string
+        description: "Comma-separated list of menu item names to order"
+        required: true
+        default: ""
+      table_number:
+        type: integer
+        description: "Table number for dine-in (0 for takeout)"
+        required: false
+        default: 0
+
+  get_order_status:
+    handler: "./tools/orders.ts#getOrderStatus"
+    description: "Check the current status and details of an existing order by order ID"
     parameters:
       order_id:
         type: string
-        description: "Order ID to look up."
+        description: "The order ID to look up (e.g. 'ORD-1001')"
         required: true
         default: ""
 
-  lookup_recipe:
-    handler: "./tools.js#lookupRecipe"
-    description: "Look up a recipe for a menu item."
+  calculate_bill:
+    handler: "./tools/orders.ts#calculateBill"
+    description: "Calculate the itemized bill for an order including tax and service charge"
     parameters:
-      dish_name:
+      order_id:
         type: string
-        description: "Name of the dish."
+        description: "The order ID to calculate the bill for"
         required: true
         default: ""
 
-  get_reviews:
-    handler: "./tools.js#getReviews"
-    description: "Get recent reviews for a menu item."
+  analyze_sentiment:
+    handler: "./tools/reviews.ts#analyzeSentiment"
+    description: "Analyze the sentiment of a customer review text (score, keywords, star rating)"
     parameters:
-      dish_name:
+      text:
         type: string
-        description: "Name of the dish to get reviews for."
+        description: "Customer review text to analyze for sentiment"
         required: true
         default: ""
 
+# ── Orchestrator-level skills (cross-agent) ───────────────────
+skills:
+  full_dining_experience:
+    description: >
+      Complete dining workflow: browse the menu for recommendations,
+      place an order, and then collect a review with sentiment analysis.
+    steps:
+      - agent: menu
+        instruction: "Search the menu for items matching the customer's preferences and provide recommendations"
+      - agent: orders
+        instruction: "Place an order for the recommended items at the customer's table"
+      - agent: reviews
+        instruction: "Ask for and analyze the customer's review of their dining experience"
+
+  menu_and_order:
+    description: >
+      Browse the menu and place an order in sequence. The orders agent
+      validates items against the menu before confirming.
+    steps:
+      - agent: menu
+        instruction: "Find menu items matching the customer's request and list them with prices"
+      - agent: orders
+        instruction: "Place an order for the items the customer selected from the menu results"
+
+# ── Agents ────────────────────────────────────────────────────
 agents:
+  # ── Menu Expert ──────────────────────────────────────────────
   menu:
-    description: "Restaurant menu expert. Knows all dishes, prices, dietary info, and recipes."
-    prompt: |
-      You are a Menu Expert for a fine dining restaurant.
-      You know every dish on the menu, including ingredients, prices, and dietary restrictions.
-      When asked about a dish, provide detailed descriptions and suggest pairings.
-      Use the tools to look up menu items and recipes.
-      Be enthusiastic about food — make the descriptions mouth-watering.
-    tools:
-      - get_menu
-      - lookup_recipe
+    description: >
+      Restaurant menu expert. Handles menu queries, dietary filtering,
+      ingredient questions, allergen warnings, and dish recommendations.
+      Use for any question about what the restaurant serves.
 
+    prompt: |
+      You are a Menu Expert AI assistant for an upscale restaurant.
+      You have access to the full menu via built-in tools and RAG context.
+
+      CRITICAL GROUNDING RULES:
+      - ONLY suggest, recommend, or mention menu items that appear in your
+        tool results or RAG context. NEVER invent, fabricate, or guess
+        menu items, prices, or ingredients.
+      - If the customer asks for something not found in the data, say
+        "I don't see that on our current menu" and suggest alternatives
+        that DO exist in the retrieved data.
+      - When listing options (e.g. vegetarian dishes), include ONLY items
+        confirmed by your tools or RAG context — not general knowledge.
+
+      Given the user's question, use your tools to find relevant menu items
+      and provide helpful, appetizing recommendations.
+
+      Focus on:
+      - Accurate menu item details (price, ingredients, allergens)
+      - Dietary accommodations (vegetarian, vegan, gluten-free, dairy-free)
+      - Personalized recommendations based on preferences
+      - Daily specials and seasonal highlights
+      - Allergen warnings when relevant
+
+      Be warm, knowledgeable, and enthusiastic about the food.
+
+    tools:
+      - search_menu
+      - get_daily_specials
+
+    guardrails:
+      input:
+        - type: topic_restriction
+          fail_action: warn
+          config:
+            allowed_topics: [menu, food, dish, ingredient, allergen, dietary, vegetarian, vegan, gluten, price, special, appetizer, entree, dessert, drink, wine, cocktail]
+      output:
+        - type: groundedness
+          fail_action: warn
+          config:
+            min_overlap: 0.25
+
+    rag:
+      enabled: true
+      namespace: menu
+      k: 10
+      retrieval:
+        strategy: multi_query
+        query_transformers: [reformulate]
+
+    skills:
+      dietary_recommendation:
+        description: "Search the menu with a dietary filter, then show today's specials that also match"
+        steps:
+          - tool: search_menu
+            source: builtin
+          - tool: get_daily_specials
+            source: builtin
+
+    execution_hints:
+      parallel_safe: true
+
+  # ── Order Manager ────────────────────────────────────────────
   orders:
-    description: "Order management specialist. Tracks and updates customer orders."
-    prompt: |
-      You are an Order Management specialist.
-      You track order status, handle modifications, and resolve issues.
-      Use check_order_status to look up orders.
-      Be efficient and professional when dealing with order inquiries.
-    tools:
-      - check_order_status
+    description: >
+      Order management agent. Handles order placement, modifications,
+      status checks, and bill calculations. Use for anything related
+      to placing or tracking an order.
 
-  reviews:
-    description: "Restaurant review analyst. Analyzes customer feedback."
     prompt: |
-      You are a Review Analyst for the restaurant.
-      You analyze customer reviews, identify trends, and provide insights.
-      Use get_reviews to fetch reviews for specific dishes.
-      Summarize sentiment and highlight common praise or complaints.
+      You are an Order Management AI assistant for the restaurant.
+      You handle order placement, status tracking, and bill calculation.
+
+      CRITICAL GROUNDING RULES:
+      - Only place orders for items that exist in the menu system.
+        If the place_order tool returns an error or indicates an item
+        is unavailable, inform the customer honestly and suggest
+        alternatives from previous tool results or context.
+      - NEVER confirm an order for items you haven't verified via tools.
+      - When suggesting alternatives, only use items you have seen in
+        tool results or context from the menu agent.
+
+      Given the user's request, use your tools to manage their order.
+
+      Focus on:
+      - Accurate order placement with correct item names
+      - Clear order confirmations with totals and estimated times
+      - Helpful status updates for existing orders
+      - Itemized bill calculation with tax and service charge
+
+      Be efficient, accurate, and confirm details before finalizing orders.
+
     tools:
-      - get_reviews
+      - place_order
+      - get_order_status
+      - calculate_bill
+      - search_menu
+      - get_daily_specials
+
+    rag:
+      enabled: false
+
+    skills:
+      order_and_bill:
+        description: "Place an order and then immediately calculate the bill"
+        steps:
+          - tool: place_order
+            source: builtin
+          - tool: calculate_bill
+            source: builtin
+
+    execution_hints:
+      parallel_safe: false
+
+  # ── Review Analyst (custom agent class) ──────────────────────
+  reviews:
+    class: ./agents/reviews.ts#ReviewsAgent
+    description: >
+      Customer review analyst. Performs sentiment analysis on reviews,
+      identifies trends, and provides actionable feedback insights.
+      Use for review analysis, feedback summaries, and satisfaction metrics.
+
+    prompt: >
+      You are a restaurant review analyst. Your role is to analyze customer
+      reviews, perform sentiment analysis, identify recurring themes and trends,
+      and provide actionable feedback insights to help improve the dining
+      experience. When presenting results, include sentiment scores, key
+      highlights, and specific recommendations. Be objective and data-driven
+      in your analysis.
+
+    tools:
+      - analyze_sentiment
+
+    rag:
+      enabled: true
+      namespace: reviews
+      k: 10
+
+    execution_hints:
+      parallel_safe: true
+
+# ── MCP gateway exposure (optional) ──────────────────────────
+#
+# How the orchid-mcp gateway presents Orchid to MCP-capable hosts.
+# Removing this block is safe — the gateway falls back to defaults.
+mcp_gateway:
+  tools:
+    orchid_ask:
+      title: "Ask the Restaurant AI"
+      description: >
+        Ask the restaurant multi-agent assistant about menus, dietary
+        filtering, order placement, modifications, reviews, sentiment, or
+        recommendations. The supervisor routes to the right specialist.
+    orchid_new_chat:
+      title: "Start a new dining session"
+      description: "Begin a fresh restaurant-AI conversation (e.g. a new table / new customer)."
+    orchid_upload_file:
+      description: "Attach a menu PDF, supplier sheet, or review export to the current session for RAG."
+
+  prompts:
+    - name: dietary_filter
+      title: "Filter menu by dietary constraint"
+      description: "Ask the menu agent for items matching a dietary constraint."
+      arguments:
+        - { name: constraint, description: "e.g. gluten-free, vegan, dairy-free", required: true }
+      template: |
+        Using the menu agent, list all menu items that are {{constraint}}.
+        Group by course (starters, mains, desserts) and include key ingredients.
+
+    - name: wine_pairing
+      title: "Suggest a wine pairing"
+      description: "Ask the menu agent to suggest a wine for a given dish or cuisine."
+      arguments:
+        - { name: dish, description: "Dish or cuisine to pair with", required: true }
+      template: |
+        Using the menu agent, suggest a wine pairing for {{dish}}.
+        Explain the pairing rationale in one short paragraph.
+
+    - name: review_summary
+      title: "Summarise recent reviews"
+      description: "Ask the reviews agent for a sentiment-weighted summary."
+      arguments:
+        - { name: window, description: "Time window (e.g. 'last 7 days', 'this month')", required: false }
+      template: |
+        Using the reviews agent, summarise customer feedback from {{window}}.
+        Include overall sentiment, recurring themes, and two actionable
+        improvements the kitchen should consider.
+
+# ── Events (schema accepted, not fully wired in TS) ────────────
+events:
+  enabled: false

@@ -2,9 +2,8 @@
  * Configuration built entirely in TypeScript — no orchid.yml, no agents.yaml.
  *
  * This is the "purest" embedded form: agents, prompts and tools are assembled
- * as plain objects, and `Orchid.fromObject` constructs the framework around
- * them. No persistence is configured, so the caller passes `persist: false`
- * (or supplies an explicit `chatStorage` via OrchidFromConfigOptions).
+ * as plain objects, and `Orchid.fromConfig` constructs the framework around
+ * them. No persistence is configured, so the caller passes `persist: false`.
  *
  * When to use this shape:
  *   - Generating agents dynamically (one per tenant, A/B bucket, feature flag).
@@ -16,37 +15,9 @@
  *     npm run inline
  */
 
-import {Orchid, registerTool} from '@orchid-ai/orchid';
+import {Orchid} from '@orchid-ai/orchid';
 
-// ── 1. In-process tool handler ──────────────────────────────────
-
-interface WeatherArgs {
-    city?: string;
-}
-
-function lookupWeather(args: Record<string, unknown>): string {
-    const city = String((args as WeatherArgs).city ?? '').toLowerCase();
-    const table: Record<string, string> = {
-        paris: '19°C, cloudy',
-        tokyo: '26°C, humid',
-        nyc: '21°C, partly sunny',
-    };
-    return table[city] ?? `No data for ${JSON.stringify(city)}.`;
-}
-
-// Register before fromObject() so any agent that lists this tool by name
-// can resolve it. No module path needed — the handler is captured here.
-registerTool('weather', lookupWeather, 'Current conditions for a city.', {
-    city: {
-        name: 'city',
-        type: 'string',
-        description: 'City name (paris, tokyo, nyc).',
-        required: true,
-        default: '',
-    },
-});
-
-// ── 2. Agents config built as plain objects ────────────────────
+// ── 1. Agents config built as plain objects ────────────────────
 
 const config = {
     version: '1',
@@ -61,23 +32,36 @@ const config = {
                 'You are a concise weather assistant. ' +
                 'Use the `weather` tool for any city the user asks about.',
             rag: {enabled: false},
-            tools: ['weather'],
+            tools: [
+                {
+                    name: 'weather',
+                    handler: './tools/weather.ts#lookupWeather',
+                    description: 'Current conditions for a city.',
+                    parameters: {
+                        city: {
+                            type: 'string',
+                            description: 'City name (paris, tokyo, nyc).',
+                            required: true,
+                        },
+                    },
+                },
+            ],
         },
     },
 };
 
-// ── 3. Invoke ──────────────────────────────────────────────────
+// ── 2. Invoke ──────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-    const client = await Orchid.fromObject(config, {defaultModel: 'ollama/llama3.2'});
+    const client = await Orchid.fromConfig(config, {defaultModel: 'ollama/llama3.2'});
 
     try {
         const result = await client.invoke({
-            message: "What's the weather in Tokyo right now?",
+            messages: [{role: 'user', content: "What's the weather in Tokyo right now?"}],
             userId: 'finn',
             tenantId: 'demo',
             persist: false,
-        });
+        } as any);
         console.log(result.response);
     } finally {
         await client.close();

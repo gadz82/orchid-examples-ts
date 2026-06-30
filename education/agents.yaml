@@ -2,81 +2,481 @@ version: "1"
 
 defaults:
   llm:
-    model: ollama/llama3.2
-    temperature: 0.3
+    model: "gemini/gemini-flash-latest"
+    temperature: 0.2
   rag:
     enabled: true
-    k: 5
+    k: 8
+    max_context_chars: 4000
+    ingestion:
+      strategy: recursive
+      chunk_size: 1000
+      chunk_overlap: 150
+    retrieval:
+      strategy: simple
+      query_transformers: ["reformulate"]
 
 supervisor:
-  assistant_name: Education Assistant
-  streaming_enabled: true
+  assistant_name: "Education Studio"
+
+guardrails:
+  input:
+    - type: prompt_injection
+      fail_action: block
+    - type: max_length
+      fail_action: block
+      config:
+        max_characters: 10000
+  output:
+    - type: pii
+      fail_action: redact
+      config:
+        entities: [email, phone, ssn]
 
 tools:
-  generate_quiz:
-    handler: "./tools.js#generateQuiz"
-    description: "Generate a quiz from course material."
+  extract_concepts:
+    handler: "./tools/content/extractConcepts.ts#extractConcepts"
+    description: "Extract key concepts, headings, and repeated themes from source material"
+    parallel_safe: true
     parameters:
-      topic:
+      source_text:
         type: string
-        description: "Topic for the quiz."
+        description: "Source material to analyze"
         required: true
         default: ""
+      max_concepts:
+        type: integer
+        description: "Maximum number of concepts to return"
+        required: false
+        default: 15
+
+  generate_questions:
+    handler: "./tools/content/generateQuestions.ts#generateQuestions"
+    description: "Generate quiz question scaffolds from extracted concepts"
+    parallel_safe: true
+    parameters:
+      concepts:
+        type: array
+        description: "Concept records to cover"
+        required: true
+        default: []
+      count:
+        type: integer
+        description: "Number of question scaffolds to produce"
+        required: true
+        default: 0
+      types:
+        type: array
+        description: "Question types to rotate through"
+        required: false
+        default: ["multiple_choice"]
       difficulty:
         type: string
-        description: "Difficulty level (beginner, intermediate, advanced)."
+        description: "Requested difficulty level or 'mixed'"
         required: false
-        default: "intermediate"
+        default: "mixed"
 
-  create_lesson_plan:
-    handler: "./tools.js#createLessonPlan"
-    description: "Create a lesson plan for a given topic."
+  validate_questions:
+    handler: "./tools/content/validateQuestions.ts#validateQuestions"
+    description: "Validate generated questions for structure and duplication"
+    parallel_safe: true
     parameters:
-      topic:
+      questions:
+        type: array
+        description: "Questions to validate"
+        required: true
+        default: []
+      source_text:
         type: string
-        description: "Topic for the lesson plan."
+        description: "Original source text for grounding checks"
+        required: false
+        default: ""
+
+  build_lesson_structure:
+    handler: "./tools/content/buildLessonStructure.ts#buildLessonStructure"
+    description: "Build a lesson-plan structure from concepts and source text"
+    parallel_safe: true
+    parameters:
+      concepts:
+        type: array
+        description: "Concept records to organize into a lesson"
+        required: true
+        default: []
+      source_text:
+        type: string
+        description: "Source material used to derive the lesson title and context"
         required: true
         default: ""
-      duration:
-        type: string
-        description: "Lesson duration (e.g., '45 min', '90 min')."
+      duration_minutes:
+        type: integer
+        description: "Target lesson duration in minutes"
         required: false
-        default: "45 min"
+        default: 30
 
-  analyze_content:
-    handler: "./tools.js#analyzeContent"
-    description: "Analyze and summarize educational content."
+  define_learning_objectives:
+    handler: "./tools/content/formatLesson.ts#defineLearningObjectives"
+    description: "Create Bloom-aligned learning objectives for the lesson"
+    parallel_safe: true
     parameters:
-      content_id:
+      concepts:
+        type: array
+        description: "Concept records to turn into objectives"
+        required: true
+        default: []
+
+  format_lesson_section:
+    handler: "./tools/content/formatLesson.ts#formatLessonSection"
+    description: "Format one lesson section as Markdown"
+    parallel_safe: true
+    parameters:
+      section:
+        type: object
+        description: "Lesson section to format"
+        required: true
+        default: {}
+
+  format_multiple_choice:
+    handler: "./tools/content/formatQuiz.ts#formatMultipleChoice"
+    description: "Format multiple-choice questions as Markdown with an answer key"
+    parallel_safe: true
+    parameters:
+      questions:
+        type: array
+        description: "Question records to format"
+        required: true
+        default: []
+      shuffle_options:
+        type: boolean
+        description: "Whether to shuffle answer options"
+        required: false
+        default: false
+
+  format_true_false:
+    handler: "./tools/content/formatQuiz.ts#formatTrueFalse"
+    description: "Format true-false questions as Markdown with a key"
+    parallel_safe: true
+    parameters:
+      questions:
+        type: array
+        description: "Question records to format"
+        required: true
+        default: []
+
+  format_fill_blank:
+    handler: "./tools/content/formatQuiz.ts#formatFillBlank"
+    description: "Format fill-in-the-blank questions as Markdown"
+    parallel_safe: true
+    parameters:
+      questions:
+        type: array
+        description: "Question records to format"
+        required: true
+        default: []
+
+  format_matching:
+    handler: "./tools/content/formatQuiz.ts#formatMatching"
+    description: "Format matching prompts into left and right columns"
+    parallel_safe: true
+    parameters:
+      pairs:
+        type: array
+        description: "Matching pairs to format"
+        required: true
+        default: []
+
+  generate_pdf:
+    handler: "./tools/output/generatePdf.ts#generatePdf"
+    description: "Export content as a PDF document"
+    parallel_safe: false
+    parameters:
+      content:
         type: string
-        description: "Content ID to analyze."
+        description: "Document content in Markdown format"
         required: true
         default: ""
+      filename:
+        type: string
+        description: "Output filename without extension"
+        required: true
+        default: ""
+      title:
+        type: string
+        description: "Optional document title"
+        required: false
+        default: ""
+
+  generate_docx:
+    handler: "./tools/output/generateDocx.ts#generateDocx"
+    description: "Export content as a DOCX document"
+    parallel_safe: false
+    parameters:
+      content:
+        type: string
+        description: "Document content in text or Markdown-like form"
+        required: true
+        default: ""
+      filename:
+        type: string
+        description: "Output filename without extension"
+        required: true
+        default: ""
+      title:
+        type: string
+        description: "Optional document title"
+        required: false
+        default: ""
+      sections:
+        type: array
+        description: "Optional structured sections"
+        required: false
+        default: []
+
+  generate_pptx:
+    handler: "./tools/output/generatePptx.ts#generatePptx"
+    description: "Export content as a PPTX presentation"
+    parallel_safe: false
+    parameters:
+      slides:
+        type: array
+        description: "Slides to render, each with a title and content"
+        required: true
+        default: []
+      filename:
+        type: string
+        description: "Output filename without extension"
+        required: true
+        default: ""
+      title:
+        type: string
+        description: "Optional presentation title"
+        required: false
+        default: ""
+
+  generate_markdown:
+    handler: "./tools/output/generateMarkdown.ts#generateMarkdown"
+    description: "Export content as Markdown"
+    parallel_safe: false
+    parameters:
+      content:
+        type: string
+        description: "Markdown content to write"
+        required: true
+        default: ""
+      filename:
+        type: string
+        description: "Output filename without extension"
+        required: true
+        default: ""
+
+  generate_txt:
+    handler: "./tools/output/generateTxt.ts#generateTxt"
+    description: "Export content as plain text"
+    parallel_safe: false
+    parameters:
+      content:
+        type: string
+        description: "Plain-text content to write"
+        required: true
+        default: ""
+      filename:
+        type: string
+        description: "Output filename without extension"
+        required: true
+        default: ""
+
+skills:
+  generate_quiz:
+    description: >
+      Analyze the uploaded educational material, extract the most
+      teachable concepts, and turn them into a grounded quiz with
+      answers and short explanations.
+    steps:
+      - agent: content-analyzer
+        instruction: "Extract the key concepts, headings, and foundational ideas from the source material."
+      - agent: quiz-generator
+        instruction: "Generate a quiz with accurate answers and concise explanations grounded in those concepts."
+      - agent: format-exporter
+        instruction: "Format the quiz for export in the user's requested file format."
+
+  generate_lesson:
+    description: >
+      Analyze the source material and assemble a paced lesson plan with
+      learning objectives, structured sections, and assessment ideas.
+    steps:
+      - agent: content-analyzer
+        instruction: "Identify the concepts that should drive a coherent lesson."
+      - agent: lesson-builder
+        instruction: "Build a lesson plan with objectives, sections, activities, and assessment."
+      - agent: format-exporter
+        instruction: "Format the lesson plan for the requested output format."
+
+  generate_full_package:
+    description: >
+      Produce a full teaching package from the source material: quiz,
+      lesson plan, and presentation-ready exports.
+    steps:
+      - agent: content-analyzer
+        instruction: "Extract and prioritise the concepts that matter most across the source material."
+      - agent: quiz-generator
+        instruction: "Generate a review quiz that covers the extracted concepts."
+      - agent: lesson-builder
+        instruction: "Build a lesson plan that teaches the same concepts in a structured sequence."
+      - agent: format-exporter
+        instruction: "Prepare the quiz, lesson, and presentation artifacts for export."
 
 agents:
-  quiz_master:
-    description: "Quiz generation specialist. Creates quiz questions from course material."
+  content-analyzer:
+    class: "./agents/bloomAgent.ts#EducationAgent"
+    description: >
+      Educational content analyst. Extracts headings, repeated themes,
+      and core concepts from uploaded learning material so downstream
+      agents can build quizzes and lessons on top of them.
     prompt: |
-      You are a Quiz Master for an educational platform.
-      Generate engaging, pedagogically sound quiz questions.
-      Use generate_quiz to create quizzes with varying difficulty.
-      Include answer explanations to reinforce learning.
-    tools: [generate_quiz]
+      You are a Content Analyzer for educational material.
+      Read the available source content, identify the core concepts,
+      and explain why they matter for teaching.
 
-  curriculum_designer:
-    description: "Curriculum and lesson plan designer."
-    prompt: |
-      You are a Curriculum Designer.
-      Create structured, standards-aligned lesson plans.
-      Use create_lesson_plan to generate plans for various topics and durations.
-      Include learning objectives, activities, and assessments.
-    tools: [create_lesson_plan]
+      Prefer the built-in extraction tool for structured outputs.
+      When summarising, keep your response grounded in the source.
+    tools:
+      - extract_concepts
+    rag:
+      namespace: education
+      enabled: true
+    execution_hints:
+      parallel_safe: true
 
-  content_analyst:
-    description: "Educational content analyst and summarizer."
+  quiz-generator:
+    description: >
+      Quiz specialist. Converts extracted concepts into answerable
+      questions with clear solutions and brief explanations.
     prompt: |
-      You are an Educational Content Analyst.
-      Review, analyze, and summarize educational materials.
-      Use analyze_content to process uploaded course content.
-      Identify key concepts, learning gaps, and suggested improvements.
-    tools: [analyze_content]
+      You are a Quiz Generator for educational content.
+      Use the extracted concepts to draft clear, answerable questions.
+
+      Every quiz must include:
+      - a correct answer
+      - a short explanation
+      - consistent difficulty labels
+
+      Validate the output before you finalise it.
+    tools:
+      - generate_questions
+      - validate_questions
+      - format_multiple_choice
+      - format_true_false
+      - format_fill_blank
+      - format_matching
+    mini_agent:
+      enabled: true
+      max_count: 4
+      timeout_seconds: 180
+      tool_allowlist_mode: inferred
+      decomposer_prompt: |
+        You are deciding whether the current quiz-generation request for "{agent_name}"
+        should fan out into parallel quiz-writing mini-agents.
+
+        Agent description: {agent_description}
+        Agent prompt: {agent_prompt}
+        Available tools: {tool_inventory}
+        User request: {user_query}
+        Conversation history: {history}
+
+        Fork when:
+        - there are 2 or more distinct source files, source sections, or source chunks
+        - each source can produce its own grounded question draft without waiting on the others
+
+        Do not fork when:
+        - only one source file or chunk is present
+        - the request depends on cross-document synthesis before writing questions
+
+        When you fork:
+        - emit between 2 and {max_count} independent sub_tasks
+        - label each sub-task with the source or theme it covers
+        - leave allowed_tools empty when the full quiz toolset is acceptable
+      aggregator_prompt: |
+        You are combining the parallel quiz drafts for the "{agent_name}" agent.
+        Original request: {user_query}
+
+        You ran {n} independent quiz-building sub-tasks. Their outcomes:
+        {outcome_block}
+
+        Produce one unified Markdown quiz.
+        Rules:
+        - merge overlapping questions and keep only one version of near-duplicates
+        - preserve the strongest wording when duplicates overlap
+        - sort questions by difficulty from easy to hard
+        - start with a short summary that states the total number of questions and the covered concepts
+        - do not mention mini-agents or internal architecture
+    rag:
+      namespace: education
+      enabled: true
+    execution_hints:
+      parallel_safe: true
+
+  lesson-builder:
+    description: >
+      Lesson planning specialist. Turns concepts into a paced lesson
+      structure with objectives, sections, activities, and assessment.
+    prompt: |
+      You are a Lesson Builder.
+      Transform the extracted concepts into a teachable lesson plan
+      with realistic pacing, Bloom-aligned objectives, and practical
+      assessment guidance.
+
+      Keep the structure concise and classroom-ready.
+    tools:
+      - build_lesson_structure
+      - define_learning_objectives
+      - format_lesson_section
+    rag:
+      namespace: education
+      enabled: true
+    execution_hints:
+      parallel_safe: true
+
+  format-exporter:
+    description: >
+      Packaging and export specialist. Formats quizzes and lesson plans
+      and writes them out as PDF, DOCX, PPTX, Markdown, or plain text.
+    prompt: |
+      You are a Format Exporter.
+      Prepare educational artifacts for delivery in the requested
+      format while preserving headings, answer keys, and lesson
+      structure.
+
+      Use the formatting tools before writing final files.
+    tools:
+      - format_multiple_choice
+      - format_true_false
+      - format_fill_blank
+      - format_matching
+      - generate_pdf
+      - generate_docx
+      - generate_pptx
+      - generate_markdown
+      - generate_txt
+    rag:
+      enabled: false
+      namespace: education-exports
+    execution_hints:
+      parallel_safe: false
+
+events:
+  enabled: true
+  queue:
+    backend: memory
+  processors:
+    - type: asyncio_pool
+      config:
+        concurrency: 2
+  schedules:
+    - expression: "0 8 * * 1"
+      signal: weekly-quiz
+      payload: {}
+  triggers:
+    - signal: education.content_request
+      action: run_agent
+      emits:
+        - signal: education.generate
+          payload: {}

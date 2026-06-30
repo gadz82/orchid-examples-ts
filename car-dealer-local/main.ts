@@ -9,10 +9,10 @@ async function main(): Promise<void> {
   const client = await Orchid.fromConfigPath(CONFIG);
   try {
     const result = await client.invoke({
-      message: "Hello! Introduce yourself and tell me what you can help with.",
+      messages: [{ role: "user", content: "Hello! Introduce yourself and tell me what you can help with." }],
       userId: "demo-user",
       tenantId: "demo",
-    });
+    } as any);
     console.log("[" + (result.agentsUsed.join(", ") || "direct") + "]");
     console.log(result.response);
   } finally {

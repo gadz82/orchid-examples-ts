@@ -1,16 +1,36 @@
-# orchid.yml — Education multi-agent demo (TypeScript port)
-# Agents for quiz generation, lesson plans, and content analysis.
+# orchid.yml — Education fleet demo configuration (TypeScript port)
+#
+# Turns uploaded course material into quizzes, lesson plans, and
+# multi-format export packages.
+#
+# Usage:
+#   cd workspace-ts/examples-ts/education
+#   npm install && npm start
 
-agents_config_path: ./agents.yaml
-default_model: ollama/llama3.2
+version: "1"
+
+agents:
+  config_path: ./agents.yaml
+
 llm:
-  ollama_api_base: http://host.docker.internal:11434
-chat_storage_class: sqlite
-chat_db_dsn: ./.orchid-education.db
-dev_auth_bypass: true
-vector_backend: qdrant
-qdrant_url: http://localhost:6333
-embedding_model: text-embedding-3-small
-uploads:
-  namespace: uploads
-  max_size_mb: 20
+  model: gemini/gemini-flash-latest
+  gemini_api_key: ${GEMINI_API_KEY}
+
+auth:
+  dev_bypass: true
+
+rag:
+  vector_backend: qdrant
+  qdrant_url: http://qdrant:6333
+  embedding_model: gemini/gemini-embedding-001
+  gemini_api_key: ${GEMINI_API_KEY}
+
+storage:
+  class: sqlite
+  dsn: ./.orchid-education.db
+
+startup:
+  hook: ./hooks/startup.ts#bootstrapEducation
+
+tracing:
+  langsmith_tracing: false

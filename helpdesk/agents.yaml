@@ -2,84 +2,207 @@ version: "1"
 
 defaults:
   llm:
-    model: ollama/llama3.2
-    temperature: 0.2
+    model: "gemini/gemini-flash-latest"
+    temperature: 0.3
+  rag:
+    enabled: true
+    k: 5
 
 supervisor:
-  assistant_name: Helpdesk Assistant
-  streaming_enabled: true
+  assistant_name: "Helpdesk AI"
+  routing_system_prompt: |
+    You are the routing brain of the Helpdesk AI system.
+    Your job is to analyze the user's message and decide which agent(s)
+    should handle it.
+
+    IMPORTANT routing rules:
+    - For new issues: ALWAYS route to triage first, then support
+    - For ticket status inquiries: route directly to support
+    - For escalation requests or critical issues: route to escalation
+    - When triage has already classified an issue, route to support next
+
+    Consider the conversation history when making routing decisions.
+
+guardrails:
+  input:
+    - type: prompt_injection
+      fail_action: block
+    - type: content_safety
+      fail_action: block
+    - type: pii_detection
+      fail_action: redact
+      config:
+        entities: [credit_card, ssn]
+    - type: max_length
+      fail_action: block
+      config:
+        max_characters: 8000
+  output:
+    - type: pii_detection
+      fail_action: redact
+      config:
+        entities: [email, phone, ssn, credit_card]
 
 tools:
-  get_ticket:
-    handler: "./tools.js#getTicket"
-    description: "Get details of a support ticket by ID."
+  classify_ticket:
+    handler: "./tools/tickets.ts#classifyTicket"
+    description: "Classify a support ticket by priority and category based on its description"
+    parameters:
+      description:
+        type: string
+        description: "The ticket description or user's problem statement"
+        required: true
+        default: ""
+  get_ticket_status:
+    handler: "./tools/tickets.ts#getTicketStatus"
+    description: "Look up the current status and details of an existing support ticket"
     parameters:
       ticket_id:
         type: string
-        description: "Ticket ID to look up."
+        description: "The ticket identifier, e.g. 'TK-1001'"
         required: true
         default: ""
-
   search_kb:
-    handler: "./tools.js#searchKnowledgeBase"
-    description: "Search the knowledge base for solutions."
+    handler: "./tools/tickets.ts#searchKB"
+    description: "Search the knowledge base for articles relevant to a technical issue"
     parameters:
       query:
         type: string
-        description: "Search query for the knowledge base."
+        description: "The search query describing the technical issue"
         required: true
         default: ""
 
-  escalate_ticket:
-    handler: "./tools.js#escalateTicket"
-    description: "Escalate a ticket to the appropriate team."
-    parameters:
-      ticket_id:
-        type: string
-        description: "Ticket ID to escalate."
-        required: true
-        default: ""
-      reason:
-        type: string
-        description: "Reason for escalation."
-        required: true
-        default: ""
-
-  check_sla:
-    handler: "./tools.js#checkSLA"
-    description: "Check SLA status for a ticket."
-    parameters:
-      ticket_id:
-        type: string
-        description: "Ticket ID."
-        required: true
-        default: ""
+skills:
+  auto_resolve:
+    description: >
+      Full ticket resolution workflow: triage classifies the issue,
+      support investigates and provides a solution, then escalation
+      handles any issues that could not be resolved at the support level.
+    steps:
+      - agent: triage
+        instruction: "Classify this issue by priority and category, and determine the best routing"
+      - agent: support
+        instruction: "Based on the triage classification, search the knowledge base and provide a detailed resolution"
+      - agent: escalation
+        instruction: "Review the support agent's findings. If the issue was resolved, confirm closure. If not, create an escalation plan"
 
 agents:
   triage:
-    description: "Initial ticket triage — categorizes and prioritizes incoming requests."
+    description: >
+      Ticket triage and classification agent. Analyzes incoming support
+      requests to determine priority (critical/high/medium/low),
+      category (authentication, api, email, compliance, billing),
+      and the best agent to handle the issue. Always runs first
+      for new issues.
+
     prompt: |
-      You are a Helpdesk Triage Agent.
-      Categorize incoming support requests by urgency and type.
-      Use get_ticket to look up ticket details and check_sla to verify SLA status.
-      Route to the appropriate support or escalation team.
-    tools: [get_ticket, check_sla]
+      You are the Triage Agent for the Helpdesk AI system.
+      Your role is to quickly classify incoming support requests.
+
+      For each issue, determine:
+      1. Priority: critical, high, medium, or low
+      2. Category: authentication, api, email, compliance, billing, or general
+      3. Suggested agent: support (for most issues) or escalation (for critical/complex)
+
+      Use the classify_ticket tool to analyze the issue description.
+      Provide a brief summary of your classification with reasoning.
+
+      Be efficient — triage is the first step, not the resolution.
+      Keep your response concise and structured.
+
+    tools:
+      - classify_ticket
+
+    rag:
+      enabled: false
 
   support:
-    description: "Technical support specialist — resolves customer issues."
+    class: ./agents/support.ts#SupportAgent
+
+    description: >
+      Technical support agent. Handles troubleshooting, diagnostics,
+      and resolution of customer issues. Can classify tickets, search
+      the knowledge base, and check ticket status. Use for any technical
+      support question or issue that needs investigation.
+
     prompt: |
-      You are a Technical Support Specialist.
-      Help customers resolve issues using the knowledge base.
-      Use search_kb to find relevant solutions.
-      Provide clear, step-by-step instructions.
-      Be patient and empathetic.
-    tools: [search_kb]
+      You are the Support Agent for the Helpdesk AI system.
+      You handle technical support queries by investigating issues,
+      searching the knowledge base, and providing clear resolutions.
+
+      Available tools:
+      - classify_ticket: Classify issues by priority and category
+      - search_kb: Search the knowledge base for relevant articles
+      - get_ticket_status: Look up existing ticket details
+
+      Always:
+      1. Classify the issue first to understand priority/category
+      2. Search the KB for relevant solutions
+      3. Provide step-by-step resolution instructions
+      4. Reference KB article IDs in your response
+      5. Recommend escalation if the issue is critical or unresolvable
+
+    tools:
+      - classify_ticket
+      - search_kb
+      - get_ticket_status
+
+    rag:
+      namespace: knowledge_base
+      k: 5
+
+    skills:
+      diagnose_and_resolve:
+        description: "Classify the issue, search KB for solutions, and provide resolution steps"
+        steps:
+          - tool: classify_ticket
+            source: builtin
+          - tool: search_kb
+            source: builtin
+
+    parallel_tools: true
+
+    mini_agent:
+      enabled: true
+      max_count: 3
+      decomposer_model: "gemini/gemini-flash-latest"
+      timeout_seconds: 60
+      tool_allowlist_mode: strict
 
   escalation:
-    description: "Escalation manager — handles critical tickets."
+    description: >
+      Escalation management agent. Handles issues that cannot be
+      resolved at the support level, including critical outages,
+      complex multi-system problems, and SLA-sensitive requests.
+      Creates escalation plans and coordinates with engineering teams.
+
     prompt: |
-      You are an Escalation Manager.
-      Handle critical and high-priority tickets that require specialized attention.
-      Use escalate_ticket to route to the right team.
-      Coordinate between support teams and provide status updates.
-    tools: [escalate_ticket, get_ticket]
+      You are the Escalation Agent for the Helpdesk AI system.
+      You handle issues that require elevated attention or expertise.
+
+      Your responsibilities:
+      1. Review the triage classification and support investigation
+      2. Determine if escalation is truly needed
+      3. If resolved by support, confirm the resolution and recommend closure
+      4. If escalation is needed, create a structured escalation plan:
+         - Severity assessment (SEV-1 through SEV-4)
+         - Affected systems and impact scope
+         - Recommended engineering team (platform, infrastructure, security)
+         - Expected response time based on severity
+         - Interim workaround if available
+
+      Escalation severity levels:
+      - SEV-1: Complete service outage, data loss, security breach (response: 15 min)
+      - SEV-2: Major feature broken, significant user impact (response: 1 hour)
+      - SEV-3: Degraded performance, workaround available (response: 4 hours)
+      - SEV-4: Minor issue, cosmetic, low impact (response: 24 hours)
+
+      Be decisive and clear. Avoid unnecessary escalations — most issues
+      should be resolved at the support level.
+
+    tools:
+      - get_ticket_status
+      - classify_ticket
+
+    rag:
+      enabled: false

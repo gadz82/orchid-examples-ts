@@ -1,17 +1,28 @@
 # orchid.yml — Restaurant multi-agent demo (TypeScript port)
 # Three agents: menu, orders, reviews with custom tools and RAG.
 
-agents_config_path: ./agents.yaml
+agents:
+  config_path: ./agents.yaml
 
-default_model: ollama/llama3.2
 llm:
-  ollama_api_base: http://host.docker.internal:11434
+  model: gemini/gemini-flash-latest
+  gemini_api_key: ${GEMINI_API_KEY}
 
-chat_storage_class: sqlite
-chat_db_dsn: ./.orchid-restaurant.db
+auth:
+  dev_bypass: true
 
-dev_auth_bypass: true
+rag:
+  vector_backend: qdrant
+  qdrant_url: http://qdrant:6333
+  embedding_model: gemini/gemini-embedding-001
+  gemini_api_key: ${GEMINI_API_KEY}
 
-vector_backend: qdrant
-qdrant_url: http://localhost:6333
-embedding_model: text-embedding-3-small
+storage:
+  class: sqlite
+  dsn: ./.orchid-restaurant.db
+
+startup:
+  hook: ./hooks/startup.ts#bootstrapRestaurant
+
+tracing:
+  langsmith_tracing: false

@@ -1,10 +1,10 @@
-# agents.yaml — Festival Producer demo configuration
+# agents.yaml — Festival Producer demo configuration (TypeScript port)
 #
 # Three GenericAgents (artist-booking, logistics, marketing) with
-# cross-agent orchestrator skills and rag_augmented conversation memory.
+# cross-agent orchestrator skills.
 #
 # Activate:
-#   AGENTS_CONFIG_PATH=examples/festival_producer/agents.yaml
+#   AGENTS_CONFIG_PATH=agents.yaml
 
 version: "1"
 
@@ -25,7 +25,7 @@ guardrails:
       config:
         max_characters: 8000
 
-# ── Supervisor — rag_augmented conversation memory ──────────
+# ── Supervisor ──────────────────────────────────────────────
 
 supervisor:
   assistant_name: "Festival Producer"
@@ -50,48 +50,157 @@ supervisor:
     truncation_max_chars: 1000
 
 # ── Built-in tools ──────────────────────────────────────────
+# NOTE: The Python version imported tool classes from
+# examples.festival_producer.tools.<module>. The TypeScript port uses
+# plain handler functions referenced as ./tools/<file>.ts#<fn>.
 tools:
   # Artist booking tools
   lookup_artist:
-    class: "examples.festival_producer.tools.booking.LookupArtistTool"
+    handler: "./tools/booking.ts#lookupArtist"
     description: "Look up an artist by name: genre, fee, availability, rider requirements"
+    parameters:
+      artist_name:
+        type: string
+        description: "Name of the artist to look up."
+        required: true
+        default: ""
+
   list_available_artists:
-    class: "examples.festival_producer.tools.booking.ListAvailableArtistsTool"
+    handler: "./tools/booking.ts#listAvailableArtists"
     description: "List artists available for a given quarter, optionally filtered by max fee"
+    parameters:
+      quarter:
+        type: string
+        description: "Quarter string, e.g. 'Q3 2026'."
+        required: false
+        default: "Q3 2026"
+      max_fee:
+        type: number
+        description: "Maximum fee in USD."
+        required: false
+        default: 999999
+
   get_rider_details:
-    class: "examples.festival_producer.tools.booking.GetRiderDetailsTool"
+    handler: "./tools/booking.ts#getRiderDetails"
     description: "Get technical rider: stage preference, power requirements, backstage needs"
+    parameters:
+      artist_name:
+        type: string
+        description: "Name of the artist."
+        required: true
+        default: ""
+
   compare_artists:
-    class: "examples.festival_producer.tools.booking.CompareArtistsTool"
+    handler: "./tools/booking.ts#compareArtists"
     description: "Compare two artists side-by-side: fee, draw, genre"
+    parameters:
+      artist_a:
+        type: string
+        description: "First artist name."
+        required: true
+        default: ""
+      artist_b:
+        type: string
+        description: "Second artist name."
+        required: true
+        default: ""
 
   # Logistics tools
   check_venue_availability:
-    class: "examples.festival_producer.tools.logistics.CheckVenueAvailabilityTool"
+    handler: "./tools/logistics.ts#checkVenueAvailability"
     description: "Check venue availability: capacity, open slots, power grid specs"
+    parameters:
+      venue_name:
+        type: string
+        description: "Name of the venue."
+        required: false
+        default: "Main Grounds"
+
   get_schedule_overview:
-    class: "examples.festival_producer.tools.logistics.GetScheduleOverviewTool"
+    handler: "./tools/logistics.ts#getScheduleOverview"
     description: "Get full schedule overview: confirmed bookings and open slots across all stages"
+    parameters: {}
+
   estimate_power_budget:
-    class: "examples.festival_producer.tools.logistics.EstimatePowerBudgetTool"
+    handler: "./tools/logistics.ts#estimatePowerBudget"
     description: "Estimate power budget for a stage based on confirmed artists"
+    parameters:
+      stage_name:
+        type: string
+        description: "Name of the stage."
+        required: false
+        default: "Main Stage"
+      artist_count:
+        type: integer
+        description: "Number of confirmed artists on the stage."
+        required: false
+        default: 3
+
   get_crew_requirements:
-    class: "examples.festival_producer.tools.logistics.GetCrewRequirementsTool"
+    handler: "./tools/logistics.ts#getCrewRequirements"
     description: "Estimate crew needs: sound engineers, lighting techs, security, medical"
+    parameters:
+      stage_name:
+        type: string
+        description: "Name of the stage."
+        required: false
+        default: "Main Stage"
+      artist_count:
+        type: integer
+        description: "Number of artists performing."
+        required: false
+        default: 3
 
   # Marketing tools
   analyze_demographics:
-    class: "examples.festival_producer.tools.marketing.AnalyzeDemographicsTool"
+    handler: "./tools/marketing.ts#analyzeDemographics"
     description: "Analyze target demographics for a music genre"
+    parameters:
+      genre:
+        type: string
+        description: "Music genre."
+        required: true
+        default: ""
+
   get_pricing_strategy:
-    class: "examples.festival_producer.tools.marketing.GetPricingStrategyTool"
+    handler: "./tools/marketing.ts#getPricingStrategy"
     description: "Get pricing strategy: early bird, general, late, VIP tiers with revenue projections"
+    parameters:
+      projected_attendance:
+        type: integer
+        description: "Projected attendance."
+        required: false
+        default: 20000
+
   recommend_channels:
-    class: "examples.festival_producer.tools.marketing.RecommendChannelsTool"
+    handler: "./tools/marketing.ts#recommendChannels"
     description: "Recommend marketing channels based on lineup genres and budget"
+    parameters:
+      budget:
+        type: number
+        description: "Marketing budget in USD."
+        required: false
+        default: 100000
+      genres:
+        type: array
+        description: "List of genres in the lineup."
+        required: false
+        default: []
+
   project_attendance:
-    class: "examples.festival_producer.tools.marketing.ProjectAttendanceTool"
+    handler: "./tools/marketing.ts#projectAttendance"
     description: "Project attendance based on lineup size and average artist draw"
+    parameters:
+      lineup_size:
+        type: integer
+        description: "Number of artists on the lineup."
+        required: false
+        default: 20
+      average_draw:
+        type: integer
+        description: "Average per-artist draw."
+        required: false
+        default: 1000
 
 # ── Orchestrator-level skills (cross-agent) ───────────────────
 skills:

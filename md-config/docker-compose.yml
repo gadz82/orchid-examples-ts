@@ -30,11 +30,12 @@ services:
         condition: service_started
     env_file: .env
     environment:
-      ORCHID_CONFIG: /app/orchid.yml
+      ORCHID_CONFIG: /app/orchid.md
     volumes:
       - chat_data:/data
-      - ./orchid.yml:/app/orchid.yml:ro
-      - ./agents.yaml:/app/agents.yaml:ro
+      - ./orchid.md:/app/orchid.md:ro
+      - ./agents:/app/agents:ro
+      - ./tools:/app/tools:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

@@ -1,12 +1,11 @@
-# orchid.yml — Festival Producer demo configuration
+# orchid.yml — Festival Producer demo configuration (TypeScript port)
 #
 # Multi-agent festival planning: artist booking, stage logistics,
-# and marketing. Backed by rag_augmented conversation memory with
-# structured JSON entity extraction and SQLite persistence.
+# and marketing. Backed by SQLite chat storage.
 #
 # Usage:
-#   ORCHID_CONFIG=orchid.yml uvicorn orchid_api.main:app
-#   orchid chat interactive --config orchid.yml
+#   cd workspace-ts/examples-ts/festival_producer
+#   npm install && npm start
 
 agents:
   config_path: agents.yaml
@@ -31,8 +30,8 @@ upload:
   chunk_overlap: 200
 
 storage:
-  class: orchid_ai.persistence.sqlite.OrchidSQLiteChatStorage
-  dsn: /data/chats.db
+  class: sqlite
+  dsn: ./.orchid-festival-producer.db
 
 tracing:
   langsmith_tracing: false

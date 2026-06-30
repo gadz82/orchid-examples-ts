@@ -80,11 +80,11 @@ async function buildExistingApp(): Promise<FastifyInstance> {
         if (!message) return reply.status(400).send({error: 'message is required'});
 
         const result: OrchidInvokeResult = await orchid.invoke({
-            message,
+            messages: [{role: 'user', content: message}],
             chatId,
             userId,
             tenantId: 'demo',
-        });
+        } as any);
 
         return {
             response: result.response,
