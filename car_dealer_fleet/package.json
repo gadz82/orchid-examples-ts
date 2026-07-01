@@ -1,1 +1,20 @@
-{"name":"@orchid-ai/example-car_dealer_fleet","private":true,"version":"0.0.0","type":"module","description":"Car dealer fleet with dynamic agent creation","scripts":{"start":"tsx main.ts","build":"tsc -p tsconfig.json"},"dependencies":{"@orchid-ai/orchid":"file:../../orchid-ts"},"devDependencies":{"tsx":"^4.7.0","typescript":"^5.4.0","@types/node":"^22.0.0"}}
+{
+  "name": "@orchid-ai/example-car_dealer_fleet",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Car dealer fleet with dynamic agent creation",
+  "scripts": {
+    "start": "tsx main.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@orchid-ai/orchid": "file:../../orchid-ts",
+    "@langchain/google-genai": "^0.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -1,1 +1,21 @@
-{"name":"@orchid-ai/example-postgres-storage","private":true,"version":"0.0.0","type":"module","description":"PostgreSQL storage demo for @orchid-ai/orchid","scripts":{"start":"tsx main.ts","build":"tsc -p tsconfig.json"},"dependencies":{"@orchid-ai/orchid":"file:../../orchid-ts","@orchid-ai/orchid-storage-postgres":"file:../../orchid-storage-postgres-ts"},"devDependencies":{"@types/node":"^25.9.3","tsx":"^4.7.0","typescript":"^5.4.0"}}
+{
+  "name": "@orchid-ai/example-postgres-storage",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "PostgreSQL storage demo for @orchid-ai/orchid",
+  "scripts": {
+    "start": "tsx main.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@orchid-ai/orchid": "file:../../orchid-ts",
+    "@orchid-ai/orchid-storage-postgres": "file:../../orchid-storage-postgres-ts",
+    "@langchain/ollama": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

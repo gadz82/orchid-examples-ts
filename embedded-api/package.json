@@ -1,19 +1,20 @@
 {
-    "name": "@orchid-ai/example-embedded-api",
-    "private": true,
-    "version": "0.0.0",
-    "type": "module",
-    "description": "Use @orchid-ai/orchid directly inside an existing Fastify app",
-    "scripts": {
-        "start": "tsx main.ts"
-    },
-    "dependencies": {
-        "@orchid-ai/orchid": "file:../../orchid-ts",
-        "fastify": "^4.26.0"
-    },
-    "devDependencies": {
-        "@types/node": "^26.0.1",
-        "tsx": "^4.7.0",
-        "typescript": "^5.4.0"
-    }
+  "name": "@orchid-ai/example-embedded-api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Use @orchid-ai/orchid directly inside an existing Fastify app",
+  "scripts": {
+    "start": "tsx main.ts"
+  },
+  "dependencies": {
+    "@orchid-ai/orchid": "file:../../orchid-ts",
+    "fastify": "^4.26.0",
+    "@langchain/ollama": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
 }
