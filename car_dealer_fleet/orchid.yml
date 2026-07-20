@@ -24,9 +24,9 @@ storage:
   class: sqlite
   dsn: ./.orchid-car-dealer-fleet.db
 
-# Startup hook — best-effort RAG seed for the demo fleet.
+# Startup hook — dynamically builds expert agents from data files.
 startup:
-  hook: ./hooks/startup.ts#seedCarDealerFleet
+  hook: ./hooks/startup.ts
 
 tracing:
   langsmith_tracing: false
