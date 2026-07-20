@@ -25,6 +25,7 @@ services:
       - chat_data:/data
       - ./orchid.yml:/app/orchid.yml:ro
       - ./agents.yaml:/app/agents.yaml:ro
+      - ./data:/app/data:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

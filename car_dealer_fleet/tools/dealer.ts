@@ -1,68 +1,88 @@
 /**
  * Built-in tools for the car-dealer-fleet example.
  *
- * In-memory demo data used by the static expert agents.
+ * Reads car specification documents from the data/ directory at runtime,
+ * matching the Python version's content-source approach.
  */
+import { readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 interface ModelSpec {
     readonly brand: string;
     readonly model: string;
-    readonly mpg: string;
-    readonly engine: string;
-    readonly notes: string;
+    readonly filename: string;
+    readonly content: string;
 }
 
-const MODELS: Record<string, ModelSpec> = {
-    camry: {
-        brand: "Toyota",
-        model: "Camry",
-        mpg: "28 city / 39 highway",
-        engine: "2.5L inline-4",
-        notes: "Reliable midsize sedan; hybrid available.",
-    },
-    corolla: {
-        brand: "Toyota",
-        model: "Corolla",
-        mpg: "32 city / 41 highway",
-        engine: "2.0L inline-4",
-        notes: "Compact sedan/hatchback.",
-    },
-    "f-150": {
-        brand: "Ford",
-        model: "F-150",
-        mpg: "19 city / 24 highway",
-        engine: "3.5L EcoBoost V6",
-        notes: "Best-selling full-size truck; high towing capacity.",
-    },
-    mustang: {
-        brand: "Ford",
-        model: "Mustang",
-        mpg: "21 city / 32 highway",
-        engine: "2.3L EcoBoost inline-4",
-        notes: "Iconic American sports coupe.",
-    },
-    golf: {
-        brand: "Volkswagen",
-        model: "Golf",
-        mpg: "29 city / 39 highway",
-        engine: "1.4L turbo inline-4",
-        notes: "Compact hatchback; GTI hot-hatch variant.",
-    },
-    tiguan: {
-        brand: "Volkswagen",
-        model: "Tiguan",
-        mpg: "23 city / 30 highway",
-        engine: "2.0L turbo inline-4",
-        notes: "Compact SUV with available third row.",
-    },
-};
+let _specsCache: ModelSpec[] | null = null;
+
+function dataDir(): string {
+    return resolve(__dirname, "..", "data");
+}
+
+function loadSpecs(): ModelSpec[] {
+    if (_specsCache) return _specsCache;
+
+    const dir = dataDir();
+    let files: string[];
+    try {
+        files = readdirSync(dir).filter((f) => f.endsWith(".md") || f.endsWith(".txt"));
+    } catch {
+        console.warn("[dealer] data/ directory not found at %s — using empty dataset", dir);
+        _specsCache = [];
+        return _specsCache;
+    }
+
+    const specs: ModelSpec[] = [];
+    for (const file of files) {
+        try {
+            const content = readFileSync(join(dir, file), "utf-8");
+            const brand = detectBrand(file, content);
+            const model = detectModel(file, content);
+            specs.push({ brand, model, filename: file, content });
+        } catch {
+            continue;
+        }
+    }
+
+    _specsCache = specs;
+    console.info("[dealer] Loaded %d spec files from data/", specs.length);
+    return _specsCache;
+}
+
+function detectBrand(filename: string, content: string): string {
+    const lower = (filename + " " + content.slice(0, 200)).toLowerCase();
+    if (lower.includes("toyota") || lower.includes("camry") || lower.includes("corolla") || lower.includes("rav4")) return "Toyota";
+    if (lower.includes("ford") || lower.includes("f-150") || lower.includes("f150") || lower.includes("mustang")) return "Ford";
+    if (lower.includes("volkswagen") || lower.includes("golf") || lower.includes("tiguan") || lower.includes("passat")) return "Volkswagen";
+    if (lower.includes("bmw")) return "BMW";
+    if (lower.includes("audi")) return "Audi";
+    if (lower.includes("honda") || lower.includes("accord") || lower.includes("civic")) return "Honda";
+    return "Unknown";
+}
+
+function detectModel(filename: string, content: string): string {
+    // Try to extract model name from the first heading or filename
+    const headingMatch = content.match(/^#\s+\d{4}\s+(.+?)(?:\s*[—–-]\s*Technical)/m);
+    if (headingMatch) return headingMatch[1].trim();
+    // Fallback: derive from filename (e.g. "camry-2025-specs.md" → "Camry")
+    const base = filename.replace(/[-_]\d{4}.*$/, "").replace(/[-_]/g, " ");
+    return base.charAt(0).toUpperCase() + base.slice(1);
+}
 
 function findModel(query: string): ModelSpec | null {
+    const specs = loadSpecs();
     const q = query.trim().toLowerCase();
     if (!q) return null;
-    if (MODELS[q]) return MODELS[q];
-    for (const [key, spec] of Object.entries(MODELS)) {
-        if (key.includes(q) || q.includes(key) || spec.model.toLowerCase().includes(q)) {
+
+    // Exact model name match
+    for (const spec of specs) {
+        if (spec.model.toLowerCase() === q) return spec;
+    }
+    // Partial match on model name, brand, or filename
+    for (const spec of specs) {
+        const haystack = `${spec.model} ${spec.brand} ${spec.filename}`.toLowerCase();
+        if (haystack.includes(q) || q.includes(spec.model.toLowerCase())) {
             return spec;
         }
     }
@@ -73,12 +93,18 @@ export async function getModelSpecs(args: Record<string, unknown>): Promise<unkn
     const model = String(args.model ?? args.query ?? "").trim();
     const spec = findModel(model);
     if (!spec) {
+        const available = loadSpecs().map((s) => `${s.brand} ${s.model}`);
         return {
-            error: `Model '${model}' not found in demo dataset`,
-            available: Object.values(MODELS).map((m) => `${m.brand} ${m.model}`),
+            error: `Model '${model}' not found in our specification documents`,
+            available_models: available,
         };
     }
-    return { ...spec };
+    return {
+        brand: spec.brand,
+        model: spec.model,
+        source_file: spec.filename,
+        specifications: spec.content,
+    };
 }
 
 export async function compareModels(args: Record<string, unknown>): Promise<unknown> {
@@ -88,7 +114,12 @@ export async function compareModels(args: Record<string, unknown>): Promise<unkn
     if (!a) missing.push(String(args.model_a ?? ""));
     if (!b) missing.push(String(args.model_b ?? ""));
     if (missing.length > 0) {
-        return { error: `Model(s) not found: ${missing.join(", ")}` };
+        const available = loadSpecs().map((s) => `${s.brand} ${s.model}`);
+        return { error: `Model(s) not found: ${missing.join(", ")}`, available_models: available };
     }
-    return { model_a: a, model_b: b, summary: `${a?.brand} ${a?.model} vs ${b?.brand} ${b?.model}` };
+    return {
+        model_a: { brand: a!.brand, model: a!.model, specifications: a!.content },
+        model_b: { brand: b!.brand, model: b!.model, specifications: b!.content },
+        summary: `${a!.brand} ${a!.model} vs ${b!.brand} ${b!.model}`,
+    };
 }

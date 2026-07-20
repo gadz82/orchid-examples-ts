@@ -1,34 +1,67 @@
 # agents.yaml — Car Dealer Expert Fleet (TypeScript port)
 #
-# The Python version created these agents dynamically from car-spec
-# documents stored in SQLite config storage. That mechanism is not
-# available in the TypeScript port, so the fleet is declared statically
-# here as a pragmatic stub.
-
+# Three brand-specialist agents that read car specification documents
+# from the data/ directory via built-in tools.
 version: "1"
-
 defaults:
   llm:
     model: gemini/gemini-flash-latest
     temperature: 0.2
   rag:
     enabled: false
+supervisor:
+  assistant_name: "Car Dealer Fleet Assistant"
+  routing_system_prompt: |
+    You are the Supervisor of the {assistant_name}.
+    Your role is to analyse the user's request and decide which specialised
+    sub-agents to activate. You do NOT have access to any external tool or API.
 
+    Available agents:
+    {agent_descriptions}
+
+    EXECUTION MODES:
+    - "parallel"   — agents run simultaneously. Use when they are INDEPENDENT.
+    - "sequential" — agents run one after another, in the order you specify.
+
+    AVAILABLE SKILLS (pre-defined multi-agent workflows):
+    {skill_descriptions}
+
+    RULES:
+    - ALWAYS route to one or more agents for ANY question about cars, vehicles,
+      brands, models, specifications, availability, or comparisons. The agents
+      have access to real specification documents via tools — you do NOT.
+    - When the user asks a general question like "what cars do you have?" or
+      "quali auto hai?", route to ALL agents in parallel so each can report
+      its available models from the data library.
+    - NEVER use directResponse for car-related questions. Only use directResponse
+      for greetings or completely off-topic questions unrelated to cars.
+    - Choose the right execution mode based on agent dependencies.
+    - If a pre-defined SKILL matches the user's request, prefer it over manual routing.
+    - For follow-up messages like "yes", "tell me more", "go ahead", ALWAYS re-route
+      to the SAME agent(s) that handled the previous turn.
+
+    FIELD INSTRUCTIONS (you MUST follow these):
+    - "reasoning": Explain WHY you chose these agents (1-2 sentences).
+    - "execution": One of "parallel", "sequential", or "skill".
+    - "agents": List of agent NAMES to activate. MUST NOT be empty unless you set
+      directResponse. Example: ["toyota-expert"] or ["toyota-expert", "ford-expert"].
+    - "skill": Skill name ONLY when execution="skill". Otherwise null.
+    - "directResponse": Your answer ONLY when no agent is needed (greetings,
+      completely off-topic questions). Otherwise null.
 # ── Built-in tools ──────────────────────────────────────────
 tools:
   get_model_specs:
     handler: "./tools/dealer.ts#getModelSpecs"
-    description: "Get specifications for a car model (mpg, engine, trim, year)."
+    description: "Get detailed specifications for a car model by reading its spec document from the data library."
     parameters:
       model:
         type: string
-        description: "Car model name, e.g. 'Camry' or 'F-150'."
+        description: "Car model name, e.g. 'Camry', 'F-150', 'Golf'."
         required: true
         default: ""
-
   compare_models:
     handler: "./tools/dealer.ts#compareModels"
-    description: "Compare two car models side-by-side."
+    description: "Compare two car models side-by-side using their spec documents."
     parameters:
       model_a:
         type: string
@@ -40,7 +73,6 @@ tools:
         description: "Second car model name."
         required: true
         default: ""
-
 # ── Orchestrator-level skills (cross-agent) ───────────────────
 skills:
   compare_brands:
@@ -50,7 +82,6 @@ skills:
         instruction: "Summarise the strengths of your brand's lineup."
       - agent: ford-expert
         instruction: "Summarise the strengths of your brand's lineup."
-
 # ── Agents ────────────────────────────────────────────────────
 agents:
   toyota-expert:
@@ -58,33 +89,46 @@ agents:
       Specialist in Toyota vehicles. Use for questions about Camry,
       Corolla, RAV4, and other Toyota models.
     prompt: >
-      You are a Toyota brand expert. You know Toyota model specs,
-      trims, fuel economy, reliability, and typical pricing.
-      Answer concisely and mention specific model details when available.
+      You are a Toyota brand expert at a car dealership.
+
+      IMPORTANT RULES:
+      1. ALWAYS use the get_model_specs tool to retrieve specification documents before answering any question about a car model.
+      2. Base your answers ONLY on the data returned by the tools. Do NOT invent or assume specifications.
+      3. If the tool returns an error or the model is not found, tell the customer which models ARE available (the tool will list them).
+      4. Always cite the source document when providing specifications.
+      5. Be accurate, helpful, and concise.
     tools:
       - get_model_specs
       - compare_models
-
   ford-expert:
     description: >
       Specialist in Ford vehicles. Use for questions about F-150,
       Mustang, Bronco, and other Ford models.
     prompt: >
-      You are a Ford brand expert. You know Ford truck and car specs,
-      towing capacity, engine options, and trims.
-      Answer concisely and mention specific model details when available.
+      You are a Ford brand expert at a car dealership.
+
+      IMPORTANT RULES:
+      1. ALWAYS use the get_model_specs tool to retrieve specification documents before answering any question about a car model.
+      2. Base your answers ONLY on the data returned by the tools. Do NOT invent or assume specifications.
+      3. If the tool returns an error or the model is not found, tell the customer which models ARE available (the tool will list them).
+      4. Always cite the source document when providing specifications.
+      5. Be accurate, helpful, and concise.
     tools:
       - get_model_specs
       - compare_models
-
   vw-expert:
     description: >
       Specialist in Volkswagen vehicles. Use for questions about Golf,
       Passat, Tiguan, and other VW models.
     prompt: >
-      You are a Volkswagen brand expert. You know VW model specs,
-      engine options, trims, and fuel economy.
-      Answer concisely and mention specific model details when available.
+      You are a Volkswagen brand expert at a car dealership.
+
+      IMPORTANT RULES:
+      1. ALWAYS use the get_model_specs tool to retrieve specification documents before answering any question about a car model.
+      2. Base your answers ONLY on the data returned by the tools. Do NOT invent or assume specifications.
+      3. If the tool returns an error or the model is not found, tell the customer which models ARE available (the tool will list them).
+      4. Always cite the source document when providing specifications.
+      5. Be accurate, helpful, and concise.
     tools:
       - get_model_specs
       - compare_models
