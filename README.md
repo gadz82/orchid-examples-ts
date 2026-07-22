@@ -4,32 +4,26 @@ Worked examples for `@orchid-ai/orchid` and `@orchid-ai/orchid-api`.
 Mirrors the Python `examples/` folder one-for-one with the same agents,
 lifecycle and demo data, adapted to the TypeScript / Node.js ecosystem.
 
-## Layout
+---
 
-```
-examples-ts/
-├── README.md               (this file)
-├── embedded/               Programmatic library usage — Orchid.fromConfigPath() & friends
-├── basketball/             Multi-agent YAML demo (mirrors Python examples/basketball/)
-├── custom-storage/         Custom OrchidChatStorage backend (MySQL skeleton)
-├── embedded-api/           Use @orchid-ai/orchid inside your own Fastify app
-└── api-extensions/         Extend @orchid-ai/orchid-api with custom Fastify routes
-```
+## Examples
 
-## Library examples (`@orchid-ai/orchid`)
+### Library examples (`@orchid-ai/orchid`)
 
-| Folder | What it shows |
-|---|---|
-| [`embedded/`](./embedded) | Five focused scripts: minimal / multi-turn / streaming / inline-config / custom-runtime |
-| [`basketball/`](./basketball) | Two GenericAgents + six built-in tools + cross-agent skills + guardrails (no MCP, no Qdrant) |
-| [`custom-storage/`](./custom-storage) | Implementing `OrchidChatStorage` against MySQL via `<modulePath>#<ExportName>` |
+| Example | What it shows | Storage |
+|---------|---------------|---------|
+| [basketball](./basketball/) | Two GenericAgents (NBA stats + psychologist), six built-in tools, cross-agent skills, guardrails | SQLite |
+| [embedded](./embedded/) | Five focused scripts: minimal / multi-turn / streaming / inline-config / custom-runtime | SQLite |
+| [custom-storage](./custom-storage/) | Custom `OrchidChatStorage` implementation (MySQL skeleton) via `<modulePath>#<ExportName>` | MySQL |
 
-## API examples (`@orchid-ai/orchid-api`)
+### API examples (`@orchid-ai/orchid-api`)
 
-| Folder | What it shows |
-|---|---|
-| [`embedded-api/`](./embedded-api) | Skip the orchid-api process — call `Orchid.invoke()` directly from your own Fastify app |
-| [`api-extensions/`](./api-extensions) | Keep the full orchid-api REST surface and add custom routes to the same Fastify instance |
+| Example | What it shows |
+|---------|---------------|
+| [embedded-api](./embedded-api/) | Call `Orchid.invoke()` directly from your own Fastify app — no separate orchid-api process |
+| [api-extensions](./api-extensions/) | Keep the full orchid-api REST surface and add custom Fastify routes alongside |
+
+---
 
 ## Choosing between embedded-api and api-extensions
 
@@ -54,7 +48,7 @@ examples-ts/
 Each folder is self-contained with its own `package.json`. The
 `@orchid-ai/orchid` (and `@orchid-ai/orchid-api`) dependencies are linked
 locally via `file:../../orchid-ts` / `file:../../orchid-api-ts`, so changes
-in either package are picked up after running their own `npm run build`.
+in either package are picked up after running their own build.
 
 ```bash
 # 1. Build the framework once (only needed when orchid-ts source changes):
@@ -69,18 +63,49 @@ npm install
 npm run minimal              # see each example's package.json scripts
 ```
 
+## Docker-ready (standalone)
+
+Examples that ship a `Dockerfile` and `docker-compose.yml` can be run
+independently as full-stack Docker stacks:
+
+```bash
+cd examples-ts/basketball
+cp .env.example .env   # fill in GEMINI_API_KEY etc.
+docker compose up --build
+
+# API: http://localhost:8080  UI: http://localhost:3000  MCP: http://localhost:9000/mcp
+```
+
+Or via the workspace Makefile:
+
+```bash
+make run-basketball        # standalone Docker stack
+make demo-basketball       # shared dev compose (infrastructure only, run locally)
+```
+
 ## Prerequisites
 
-- Node.js 20+ (ESM, top-level await).
-- A reachable LLM provider — by default the examples target Ollama on
-  `http://localhost:11434` with `llama3.2`. Override `default_model` in
-  each example's `orchid.yml` (or the `defaultModel` arg to
-  `Orchid.fromObject(...)`) to switch to OpenAI / Anthropic / Gemini.
-- For RAG-heavy demos, a running Qdrant. The provided examples disable
-  RAG by default so this is not required.
+- **Node.js 20+** (ESM, top-level await).
+- **Docker** — for the Docker-ready examples
+- **API key** — Gemini (free tier at [aistudio.google.com](https://aistudio.google.com/apikey)), or Groq / Anthropic / OpenAI
+- **Ollama** (optional) — for fully local inference (`ollama pull llama3.2 nomic-embed-text`)
+
+By default the examples target Ollama on `http://localhost:11434` with
+`llama3.2`. Override `default_model` in each example's `orchid.yml`
+(or the `defaultModel` arg to `Orchid.fromObject(...)`) to switch to
+OpenAI / Anthropic / Gemini.
+
+## Shared Docker helpers
+
+The `_docker/` directory contains Dockerfiles shared across all Docker-ready examples:
+
+| File | Purpose |
+|------|---------|
+| `_docker/Dockerfile.frontend` | Clones and runs [orchid-frontend](https://github.com/gadz82/orchid-frontend) |
+| `_docker/Dockerfile.mcp` | Runs the MCP gateway via `npm install @orchid-ai/mcp` |
 
 ## Domain-neutral content
 
-The `embedded/` and `custom-storage/` examples use a *library / books*
-domain. The `basketball/` example mirrors the Python `examples/basketball/`
-demo. Neither references any specific vendor or platform — adapt freely.
+The `embedded/` and `custom-storage/` examples use a library / books domain.
+The `basketball/` example mirrors the Python `examples/basketball/` demo.
+Neither references any specific vendor or platform — adapt freely.
