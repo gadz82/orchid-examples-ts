@@ -6,7 +6,8 @@
   "description": "Learning platform with event producers",
   "scripts": {
     "start": "tsx main.ts",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@orchid-ai/orchid": "file:../../orchid-ts",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "tsx": "^4.7.0",
     "typescript": "^5.4.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "vitest": "^1.6.0"
   }
 }

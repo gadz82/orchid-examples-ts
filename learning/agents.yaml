@@ -1,12 +1,10 @@
 # agents.yaml — Learning example configuration (TypeScript port)
 #
-# The Python version demonstrated the Pollen + Bloom fan-out pattern:
-# a weekly cron tick emitted one signal per active learner, and each
-# signal triggered a Bloom under the ``addressed_to_user`` identity.
-# That event-driven infrastructure (custom OrchidSignalProducer,
-# APScheduler, SQLite signal queue) is not available in the TypeScript
-# port, so the example is reduced to a single digest agent that can be
-# invoked directly.
+# Demonstrates the Pollen + Bloom fan-out pattern aligned with the
+# Python version: a custom ``WeeklyDigestFanoutProducer`` enumerates
+# active learners at cron time and emits one signal per ``(tenant, user)``,
+# and a trigger maps each signal to the digest agent under the
+# ``addressed_to`` identity flavour.
 
 version: "1"
 
@@ -48,6 +46,54 @@ agents:
     execution_hints:
       parallel_safe: true
 
-# NOTE: The Python events/producers/triggers block has been removed
-# because the TypeScript port does not yet support custom signal
-# producers or cron-based fan-out.
+# ── Pollen + Bloom (events) ──────────────────────────────────
+# Weekly fan-out — the custom WeeklyDigestFanoutProducer enumerates
+# active learners and emits one ``weekly-digest.due`` signal per
+# (tenant, user).  Each signal triggers a Bloom under the
+# ``addressed_to`` identity flavour.
+#
+# Demonstrates:
+#
+#   * Custom ``OrchidEventProducer`` (the integrator-extensible
+#     pattern, built into the example for didactic clarity).
+#   * ``addressed_to`` identity flavour: the digest runs scoped
+#     to a specific user's RAG visibility.
+#   * One trigger, N parallel runs (one per user).
+#   * Default visibility = ``addressed`` — each user only sees
+#     their own digest, never another user's.
+events:
+  enabled: true
+
+  queue:
+    backend: memory
+    visibilityTimeoutSeconds: 30
+    maxReceiveCount: 2
+    leasePollIntervalMs: 200
+
+  producers:
+    - class: ./producers/weeklyDigest.js#WeeklyDigestFanoutProducer
+      extraArgs:
+        cron: "0 6 * * 1"
+        tenantProvider:
+          type: static
+          tenants: ["learning-demo"]
+        userLister:
+          type: static
+          usersByTenant:
+            learning-demo: ["u-alice", "u-bob"]
+
+  processors:
+    - type: async-pool
+      config:
+        concurrency: 4
+
+  triggers:
+    - signal: weekly-digest.due
+      action: invoke-agent
+      emits:
+        - signal: weekly-digest.due
+          payload:
+            agent: digest
+      retry:
+        maxRetries: 2
+        backoff: exponential

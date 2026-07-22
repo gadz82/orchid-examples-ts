@@ -15,13 +15,14 @@ import {
     OrchidAgent,
     getRunContext,
     makeScope,
-} from "@orchid-ai/orchid";
+} from "@orchid-ai/orchid/core";
 import type {
     OrchidAgentState,
     OrchidAuthContext,
     OrchidVectorReader,
     ChatModelLike,
-} from "@orchid-ai/orchid";
+    ConversationMessage,
+} from "@orchid-ai/orchid/core";
 import { classifyTicket, getTicketStatus, searchKB } from "../tools/tickets.js";
 
 const MAX_TOOL_ROUNDS = 8;
@@ -181,7 +182,7 @@ export class SupportAgent extends OrchidAgent {
     private async agenticLoop(opts: {
         userQuery: string;
         ragData: { document: { pageContent: string; metadata: Record<string, unknown> }; score: number }[];
-        conversationHistory: import("@orchid-ai/orchid").ConversationMessage[];
+        conversationHistory: ConversationMessage[];
     }): Promise<[string, Record<string, unknown>]> {
         const chatModel = this._chatModel;
         if (!chatModel) {
