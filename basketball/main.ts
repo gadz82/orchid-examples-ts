@@ -28,6 +28,7 @@ const QUERIES = [
     'My shooting confidence is gone — any advice?',
 ] as const;
 
+// ORCHID-MEM: 01a1a0c1-dedb-70a8-8063-cf70e03df27e — TypeScript basketball example loop
 async function main(): Promise<void> {
     const client = await Orchid.fromConfigPath(CONFIG);
 
